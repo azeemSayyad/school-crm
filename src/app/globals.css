@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --c-accent: #0097A7;
+    --c-accent-ghost: #e0f4f7;
+    --c-bg: #F7F8FA;
+    --c-bg-subtle: #F0F1F3;
+    --c-surface: #ffffff;
+    --c-text: #111827;
+    --c-text-secondary: #5F6B7A;
+    --c-text-muted: #9CA3AF;
+    --c-border: #E8EAED;
+    --c-border-light: #F0F1F3;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    min-width: 375px;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    background: var(--c-bg);
+    color: var(--c-text);
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+}
+
+@layer components {
+  .topnav-btn {
+    transition: all 0.12s ease;
+    position: relative;
+  }
+  .topnav-btn:hover {
+    background: rgba(255,255,255,0.12);
+  }
+  .topnav-btn::after {
+    display: none;
+  }
+
+  /* Below 450px: hide nav items, show hamburger */
+  .topnav-hamburger-mobile {
+    display: none;
+  }
+  @media (max-width: 450px) {
+    .topnav-collapse {
+      display: none !important;
+    }
+    .topnav-hamburger-mobile {
+      display: flex !important;
+    }
+  }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
