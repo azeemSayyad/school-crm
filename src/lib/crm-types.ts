@@ -176,6 +176,16 @@ export interface Student {
   email_last_clicked_at?: string | null;
 }
 
+export interface StudentProgram {
+  id: string;
+  student_id: string;
+  created_at: string;
+  program_name: string;
+  program_status: string;
+  enrollment_date: string | null;
+  notes: string | null;
+}
+
 export interface ActivityLog {
   id: string;
   student_id: string;

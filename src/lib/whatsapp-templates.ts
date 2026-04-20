@@ -9,6 +9,7 @@ export interface WaTemplateDefinition {
   category: WhatsAppTemplateCategory;
   lang: WhatsAppTemplateLang;
   variables: string[];
+  fallback?: { program?: string };
   render(vars: Record<string, string>): string;
 }
 

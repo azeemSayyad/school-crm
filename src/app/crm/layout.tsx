@@ -188,7 +188,7 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
 
         {/* Right side */}
         <div ref={rightRef} className="ml-auto flex items-center gap-1.5 md:gap-3 shrink-0">
-          <NotificationDropdown onUnreadCountChange={() => {}} userId={userId} />
+          <NotificationDropdown onUnreadCountChange={() => {}} userId={userId ? Number(userId) : null} />
           <div className="hidden sm:flex items-center gap-1.5 ml-1">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
             <span className="text-xs font-medium text-white/50">{roleLabel}</span>

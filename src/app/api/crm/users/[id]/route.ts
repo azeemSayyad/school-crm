@@ -89,7 +89,7 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
   if (!Number.isFinite(id)) return Response.json({ error: "Invalid id" }, { status: 400 });
 
   // Don't let an admin delete themselves and lock everyone out.
-  if (id === caller.id) {
+  if (id === Number(caller.id)) {
     return Response.json({ error: "You cannot delete your own account" }, { status: 400 });
   }
 

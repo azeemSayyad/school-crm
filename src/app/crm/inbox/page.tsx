@@ -21,6 +21,8 @@ interface EmailTplOption { id: string; title: string; subject: string; body: str
 interface ScheduledMessage { id: string; channel: string; body?: string | null; subject?: string | null; scheduled_at: string; content_sid?: string | null; content_variables?: Record<string, string> | null; }
 
 /* ─── Helpers ─── */
+const BROADCAST_PROGRAMS = ["all"] as const;
+
 const getInitials = (n: string) => n.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 const getHue = (n: string) => n.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
 const timeAgo = (d: string) => { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 1) return "now"; if (m < 60) return `${m}m`; const h = Math.floor(m / 60); if (h < 24) return `${h}h`; return `${Math.floor(h / 24)}d`; };
@@ -65,7 +67,7 @@ export default function InboxPage() {
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [broadcastStatuses, setBroadcastStatuses] = useState<Set<string>>(new Set());
   const [broadcastMsg, setBroadcastMsg] = useState("");
-  const [broadcastRecipients, setBroadcastRecipients] = useState<{ id: string; name: string; phone: string; email: string | null; language: string | null }[]>([]);
+  const [broadcastRecipients, setBroadcastRecipients] = useState<{ id: string; name: string; phone: string; email: string | null; language: string | null; program?: string | null }[]>([]);
   const [broadcastSelected, setBroadcastSelected] = useState<Set<string>>(new Set());
   const [broadcastSearchAdded, setBroadcastSearchAdded] = useState<Set<string>>(new Set());
   const [broadcastVisibleCount, setBroadcastVisibleCount] = useState(10);
@@ -77,7 +79,7 @@ export default function InboxPage() {
   const [broadcastChannel, setBroadcastChannel] = useState<"whatsapp" | "sms" | "email">("sms");
   const [broadcastSearch, setBroadcastSearch] = useState("");
   const [broadcastSearchFocused, setBroadcastSearchFocused] = useState(false);
-  const [broadcastSearchResults, setBroadcastSearchResults] = useState<{ id: string; name: string; phone: string; email: string | null; language: string | null }[]>([]);
+  const [broadcastSearchResults, setBroadcastSearchResults] = useState<{ id: string; name: string; phone: string; email: string | null; language: string | null; program?: string | null }[]>([]);
   const [broadcastSearchLoading, setBroadcastSearchLoading] = useState(false);
   // Lead creation date range filter
   const [broadcastDateFrom, setBroadcastDateFrom] = useState("");
