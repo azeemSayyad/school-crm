@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
+import { CLASS_LIST } from "@/components/ClassSelector";
 import type {
   Teacher,
   TeacherSalaryPayment,
@@ -39,6 +40,49 @@ const PAGE_SIZE = 20;
 
 type DrawerTab = "overview" | "salary" | "leaves" | "notes";
 
+/* ─── Class Picker (multi-select pill grid) ─── */
+function ClassPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (cls: string) =>
+    onChange(value.includes(cls) ? value.filter((c) => c !== cls) : [...value, cls]);
+  return (
+    <div>
+      <label className="block text-[12px] font-medium text-gray-600 mb-2">
+        Assigned Classes <span className="text-[11px] text-gray-400 font-normal">(select one or more)</span>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {CLASS_LIST.map((cls) => {
+          const active = value.includes(cls.value);
+          return (
+            <button
+              key={cls.value}
+              type="button"
+              onClick={() => toggle(cls.value)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border-[1.5px] transition-all cursor-pointer"
+              style={{
+                background: active ? cls.bg : "#fff",
+                borderColor: active ? cls.dot : "#e5e7eb",
+                color: active ? cls.text : "#6b7280",
+                boxShadow: active ? `0 0 0 2px ${cls.dot}30` : "none",
+              }}
+            >
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: active ? cls.dot : "#d1d5db" }}
+              />
+              {cls.label}
+            </button>
+          );
+        })}
+      </div>
+      {value.length > 0 && (
+        <p className="text-[11px] text-gray-400 mt-1.5">
+          {value.length} class{value.length > 1 ? "es" : ""} assigned
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* ─── Add Teacher Modal ─── */
 interface AddTeacherModalProps {
   onClose: () => void;
@@ -61,6 +105,7 @@ function AddTeacherModal({ onClose, onCreated }: AddTeacherModalProps) {
     salary_frequency: "monthly" as SalaryFrequency,
     notes: "",
   });
+  const [assignedClasses, setAssignedClasses] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -71,6 +116,29 @@ function AddTeacherModal({ onClose, onCreated }: AddTeacherModalProps) {
     if (!isSupabaseConfigured()) return;
     setSaving(true);
     setError("");
+
+    // 1. Create a user account for the teacher
+    const userRes = await fetch("/api/crm/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        username: form.name.trim(),
+        password: "1234",
+        role: "teacher"
+      })
+    });
+
+    if (!userRes.ok) {
+      const errJson = await userRes.json().catch(() => ({}));
+      setError(errJson.error || "Failed to create user account for teacher");
+      setSaving(false);
+      return;
+    }
+
+    const { user: newUser } = await userRes.json();
+
+    // 2. Insert the teacher record with the link to the user
     const { error: err } = await supabase.from("teachers").insert({
       name: form.name.trim(),
       phone: form.phone.trim() || null,
@@ -85,9 +153,22 @@ function AddTeacherModal({ onClose, onCreated }: AddTeacherModalProps) {
       base_salary: form.base_salary ? parseFloat(form.base_salary) : null,
       salary_frequency: form.salary_frequency,
       notes: form.notes.trim() || null,
+      assigned_classes: assignedClasses,
+      user_id: newUser.id, // Link to the newly created user
     });
+
+    if (err) {
+      // Cleanup: delete the created user if the teacher insertion failed
+      await fetch(`/api/crm/users/${newUser.id}`, {
+        method: "DELETE",
+        credentials: "same-origin"
+      });
+      setError(err.message);
+      setSaving(false);
+      return;
+    }
+
     setSaving(false);
-    if (err) { setError(err.message); return; }
     onCreated();
   };
 
@@ -175,6 +256,8 @@ function AddTeacherModal({ onClose, onCreated }: AddTeacherModalProps) {
             <label className="block text-[12px] font-medium text-gray-600 mb-1">Notes</label>
             <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={2} placeholder="Any additional notes..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-[#0170B9]/20 focus:border-[#0170B9] resize-none" />
           </div>
+
+          <ClassPicker value={assignedClasses} onChange={setAssignedClasses} />
         </div>
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="px-4 py-2 text-[13px] font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer">Cancel</button>
@@ -202,7 +285,6 @@ function TeacherDrawer({ teacher, onClose, onUpdated, onDeleted }: DrawerProps) 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
-  // Salary tab
   const [salaryPayments, setSalaryPayments] = useState<TeacherSalaryPayment[]>([]);
   const [loadingSalary, setLoadingSalary] = useState(false);
   const [showLogPayment, setShowLogPayment] = useState(false);
@@ -210,7 +292,6 @@ function TeacherDrawer({ teacher, onClose, onUpdated, onDeleted }: DrawerProps) 
   const [loggingPayment, setLoggingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState("");
 
-  // Leaves tab
   const [leaves, setLeaves] = useState<TeacherLeave[]>([]);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
   const [showLogLeave, setShowLogLeave] = useState(false);
@@ -218,13 +299,19 @@ function TeacherDrawer({ teacher, onClose, onUpdated, onDeleted }: DrawerProps) 
   const [loggingLeave, setLoggingLeave] = useState(false);
   const [leaveError, setLeaveError] = useState("");
 
-  // Notes tab
   const [notes, setNotes] = useState(teacher.notes ?? "");
   const [savingNotes, setSavingNotes] = useState(false);
 
-  // Delete
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const [teacherUsers, setTeacherUsers] = useState<{ id: string; username: string }[]>([]);
+
+  useEffect(() => {
+    supabase.from("users").select("id, username").eq("role", "teacher").then(({ data }) => {
+      if (data) setTeacherUsers(data as { id: string; username: string }[]);
+    });
+  }, []);
 
   useEffect(() => {
     if (tab === "salary") fetchSalaryPayments();
@@ -282,6 +369,8 @@ function TeacherDrawer({ teacher, onClose, onUpdated, onDeleted }: DrawerProps) 
         status: form.status,
         base_salary: form.base_salary ?? null,
         salary_frequency: form.salary_frequency,
+        assigned_classes: form.assigned_classes ?? [],
+        user_id: form.user_id ?? null,
       })
       .eq("id", teacher.id)
       .select()
@@ -461,6 +550,41 @@ function TeacherDrawer({ teacher, onClose, onUpdated, onDeleted }: DrawerProps) 
                       <InfoField label="Frequency" value={SALARY_FREQUENCIES.find((f) => f.value === teacher.salary_frequency)?.label ?? teacher.salary_frequency} />
                     </div>
                   </section>
+
+                  <section>
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Assigned Classes</p>
+                    {(!teacher.assigned_classes || teacher.assigned_classes.length === 0) ? (
+                      <p className="text-[13px] text-gray-400">No classes assigned</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {teacher.assigned_classes.map((cv) => {
+                          const cfg = CLASS_LIST.find((c) => c.value === cv);
+                          if (!cfg) return null;
+                          return (
+                            <span
+                              key={cv}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold"
+                              style={{ background: cfg.bg, border: `1.5px solid ${cfg.border}`, color: cfg.text }}
+                            >
+                              <span className="w-2 h-2 rounded-full" style={{ background: cfg.dot }} />
+                              {cfg.label}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+
+                  <section>
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Login Account</p>
+                    {teacher.user_id ? (
+                      <p className="text-[13px] font-semibold text-gray-800">
+                        {teacherUsers.find((u) => u.id === teacher.user_id)?.username ?? `User #${teacher.user_id}`}
+                      </p>
+                    ) : (
+                      <p className="text-[13px] text-gray-400">Not linked</p>
+                    )}
+                  </section>
                 </>
               ) : (
                 /* Edit form */
@@ -534,6 +658,13 @@ function TeacherDrawer({ teacher, onClose, onUpdated, onDeleted }: DrawerProps) 
                       </select>
                     </div>
                   </div>
+
+                  <ClassPicker
+                    value={form.assigned_classes ?? []}
+                    onChange={(v) => setForm((f) => ({ ...f, assigned_classes: v }))}
+                  />
+
+
 
                   <div className="flex gap-2 pt-2">
                     <button onClick={cancelEdit} className="flex-1 py-2 text-[13px] font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer">Cancel</button>
@@ -861,20 +992,20 @@ export default function TeachersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--c-bg)] font-['DM_Sans']">
-      <div className="max-w-[1400px] mx-auto px-3 sm:px-4 py-6">
+    <div className="min-h-full bg-[var(--c-bg)] font-['DM_Sans']">
+      <div className="w-full px-0 ">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-[19px] font-extrabold text-[var(--c-text)]">Teachers</h1>
-            <p className="text-[13px] text-[var(--c-text-muted)] mt-0.5">
+            <h1 className="text-[22px] font-extrabold text-gray-900 tracking-tight">Teachers</h1>
+            <p className="text-[13.5px] text-gray-400 ">
               {totalCount} teacher{totalCount !== 1 ? "s" : ""}
             </p>
           </div>
           {canManage && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-[7px] bg-[var(--c-accent)] text-white text-[13px] font-semibold rounded-[7px] hover:opacity-90 transition-opacity cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-[9px] bg-[#0170B9] text-white text-[13.5px] font-bold rounded-[8px] hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
               Add Teacher
@@ -883,9 +1014,9 @@ export default function TeachersPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
           <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-text-muted)]" width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" width="15" height="15" viewBox="0 0 24 24" fill="none">
               <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
               <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
@@ -894,13 +1025,13 @@ export default function TeachersPage() {
               placeholder="Search by name, email or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-[7px] border border-[var(--c-border)] rounded-[7px] text-[13px] bg-[var(--c-surface)] text-[var(--c-text)] placeholder:text-[var(--c-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 focus:border-[var(--c-accent)]"
+              className="w-full pl-10 pr-4 py-[9px] border border-gray-200 rounded-[8px] text-[14px] bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0170B9]/20 focus:border-[#0170B9]"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "all" | TeacherStatus)}
-            className="px-3 py-[7px] border border-[var(--c-border)] rounded-[7px] text-[13px] bg-[var(--c-surface)] text-[var(--c-text)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 cursor-pointer"
+            className="px-4 py-[9px] border border-gray-200 rounded-[8px] text-[14px] bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0170B9]/20 cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active</option>
@@ -910,7 +1041,7 @@ export default function TeachersPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-[7px] border border-[var(--c-border)] rounded-[7px] text-[13px] bg-[var(--c-surface)] text-[var(--c-text)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 cursor-pointer"
+            className="px-4 py-[9px] border border-gray-200 rounded-[8px] text-[14px] bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0170B9]/20 cursor-pointer"
           >
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
@@ -933,7 +1064,7 @@ export default function TeachersPage() {
                 <path d="M22 8l-3 3-1.5-1.5" />
               </svg>
             </div>
-            <p className="text-[13px] text-[var(--c-text)] font-semibold">No teachers found</p>
+            <p className="text-[14px] text-[var(--c-text)] font-semibold">No teachers found</p>
             <p className="text-[13px] text-[var(--c-text-muted)] mt-1">
               {debouncedSearch || statusFilter !== "all" ? "Try adjusting your filters." : "Click \"Add Teacher\" to add your first teacher."}
             </p>
@@ -942,17 +1073,17 @@ export default function TeachersPage() {
 
         {/* Desktop Table */}
         {!loading && teachers.length > 0 && (
-          <div className="hidden md:block bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)] overflow-hidden">
-            <table className="w-full">
+          <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-[var(--c-border-light)]">
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-[var(--c-text-muted)] uppercase tracking-wider">Teacher</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-[var(--c-text-muted)] uppercase tracking-wider">Department / Subject</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-[var(--c-text-muted)] uppercase tracking-wider">Contact</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-[var(--c-text-muted)] uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-[var(--c-text-muted)] uppercase tracking-wider">Base Salary</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-[var(--c-text-muted)] uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-[var(--c-text-muted)] uppercase tracking-wider">Joined</th>
+                <tr className="bg-gray-50/50 border-b border-gray-100">
+                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Teacher</th>
+                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Department / Subject</th>
+                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Base Salary</th>
+                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Joined</th>
                 </tr>
               </thead>
               <tbody>
@@ -964,35 +1095,35 @@ export default function TeachersPage() {
                     <tr
                       key={teacher.id}
                       onClick={() => setSelectedTeacher(teacher)}
-                      className="border-b border-[var(--c-border-light)] last:border-0 hover:bg-[var(--c-bg)] cursor-pointer transition-colors"
+                      className="border-b border-gray-100 last:border-0 hover:bg-slate-50/50 cursor-pointer transition-colors"
                     >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{ background: `hsl(${hue},65%,50%)` }}>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold shrink-0 shadow-sm" style={{ background: `hsl(${hue},65%,50%)` }}>
                             {getInitials(teacher.name)}
                           </div>
-                          <span className="text-[13px] font-semibold text-[var(--c-text)]">{teacher.name}</span>
+                          <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{teacher.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <p className="text-[13px] text-[var(--c-text)]">{teacher.department || "—"}</p>
-                        {teacher.subject && <p className="text-[11px] text-[var(--c-text-muted)]">{teacher.subject}</p>}
+                      <td className="px-5 py-3">
+                        <p className="text-[15px] font-bold text-gray-900 leading-tight">{teacher.department || "—"}</p>
+                        {teacher.subject && <p className="text-[13px] text-gray-400 font-medium mt-1">{teacher.subject}</p>}
                       </td>
-                      <td className="px-4 py-3">
-                        <p className="text-[13px] text-[var(--c-text)]">{teacher.phone || "—"}</p>
-                        {teacher.email && <p className="text-[11px] text-[var(--c-text-muted)]">{teacher.email}</p>}
+                      <td className="px-5 py-3">
+                        <p className="text-[15px] font-bold text-gray-900 leading-tight">{teacher.phone || "—"}</p>
+                        {teacher.email && <p className="text-[13px] text-gray-400 font-medium mt-1">{teacher.email}</p>}
                       </td>
-                      <td className="px-4 py-3 text-[13px] text-[var(--c-text-muted)]">{empType}</td>
-                      <td className="px-4 py-3">
-                        <p className="text-[13px] font-semibold text-[var(--c-text)]">{fmtCurrency(teacher.base_salary)}</p>
-                        {teacher.base_salary && <p className="text-[11px] text-[var(--c-text-muted)] capitalize">{teacher.salary_frequency}</p>}
+                      <td className="px-5 py-3 text-[14.5px] font-medium text-gray-500">{empType}</td>
+                      <td className="px-5 py-3">
+                        <p className="text-[15.5px] font-bold text-gray-900 leading-tight">{fmtCurrency(teacher.base_salary)}</p>
+                        {teacher.base_salary && <p className="text-[12.5px] text-gray-400 capitalize font-medium mt-0.5">{teacher.salary_frequency}</p>}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ color: statusMeta.color, background: statusMeta.bg }}>
+                      <td className="px-5 py-3">
+                        <span className="inline-flex px-2.5 py-0.5 rounded-full text-[12px] font-semibold" style={{ color: statusMeta.color, background: statusMeta.bg }}>
                           {statusMeta.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-[13px] text-[var(--c-text-muted)] whitespace-nowrap">{fmtDate(teacher.join_date)}</td>
+                      <td className="px-5 py-3 text-[14.5px] font-medium text-gray-500 whitespace-nowrap">{fmtDate(teacher.join_date)}</td>
                     </tr>
                   );
                 })}

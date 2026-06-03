@@ -191,4 +191,11 @@ export const Icons = {
       <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
     </svg>
   ),
+  fees: (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+      <rect x="2" y="4" width="20" height="16" rx="2.5" />
+      <line x1="12" y1="8" x2="12" y2="16" />
+      <path d="M9.5 11h5a2 2 0 000-4h-5a2 2 0 000 4h5a2 2 0 010 4h-5" />
+    </svg>
+  ),
 };

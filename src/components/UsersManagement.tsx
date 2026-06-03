@@ -5,7 +5,7 @@ import { Btn } from "./ui";
 import { Icons } from "./Icons";
 
 interface CrmUser {
-  id: number;
+  id: string;
   username: string;
   role: string;
   created_at: string;
@@ -26,7 +26,7 @@ export default function UsersManagement() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [modalForm, setModalForm] = useState({ username: "", password: "", role: "teacher" });
-  const [modalEditId, setModalEditId] = useState<number | null>(null);
+  const [modalEditId, setModalEditId] = useState<string | null>(null);
   const [modalSaving, setModalSaving] = useState(false);
 
   const [deleteUser, setDeleteUser] = useState<CrmUser | null>(null);

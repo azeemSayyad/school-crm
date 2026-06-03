@@ -7,7 +7,12 @@ import {
 } from "@/lib/auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+// Use the service-role key here so we can read the users table regardless of RLS.
+// This file is server-side only (Next.js Route Handler) — the key is never sent to the browser.
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "";
 
 function getSupabase() {
   if (!supabaseUrl.startsWith("http") || supabaseKey.length < 10) return null;

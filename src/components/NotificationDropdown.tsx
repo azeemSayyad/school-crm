@@ -176,10 +176,11 @@ export default function NotificationDropdown({
           setOpen(next);
           if (next && unreadCount > 0) markAllAsRead();
         }}
-        className="relative flex items-center justify-center w-9 h-9 rounded-lg border-none cursor-pointer transition-all"
+        className="relative flex items-center justify-center w-9 h-9 rounded-lg cursor-pointer transition-all"
         style={{
-          background: open ? "rgba(255,255,255,0.2)" : "transparent",
-          color: "rgba(255,255,255,0.8)",
+          background: open ? "var(--c-accent-ghost)" : "transparent",
+          color: open ? "var(--c-accent)" : "var(--c-text-secondary)",
+          border: "1px solid var(--c-border)",
         }}
       >
         {Icons.bell}
@@ -193,7 +194,7 @@ export default function NotificationDropdown({
       {/* Dropdown panel */}
       {open && (
         <div
-          className="fixed right-3 left-3 sm:left-auto sm:right-4 sm:w-[380px] top-[68px] bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] z-[100] animate-[fadeUp_0.15s_ease]"
+          className="fixed right-3 left-3 sm:left-auto sm:right-4 sm:w-[380px] top-[68px] bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] z-[400] animate-[fadeUp_0.15s_ease]"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--c-border)]">

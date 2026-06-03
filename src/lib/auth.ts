@@ -12,7 +12,11 @@ export async function verifyPassword(plain: string, stored: string): Promise<boo
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+// Service-role key bypasses RLS — this module is server-side only.
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "";
 
 function getSupabase() {
   if (!supabaseUrl.startsWith("http") || supabaseKey.length < 10) return null;

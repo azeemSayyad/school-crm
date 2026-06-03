@@ -23,6 +23,8 @@ export interface Teacher {
   base_salary: number | null;
   salary_frequency: SalaryFrequency;
   notes: string | null;
+  assigned_classes: string[]; // class values e.g. ['1', '2', 'Nursery']
+  user_id: string | null;
 }
 
 export interface TeacherSalaryPayment {
@@ -174,6 +176,8 @@ export interface Student {
   email_last_delivered_at?: string | null;
   email_last_opened_at?: string | null;
   email_last_clicked_at?: string | null;
+  total_fees: number | null;
+  fees_paid: number | null;
 }
 
 export interface StudentProgram {

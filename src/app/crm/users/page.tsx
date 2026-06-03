@@ -11,7 +11,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (!loading && user && user.role !== "super_admin") {
-      router.replace("/crm/dashboard");
+      router.replace("/crm/students");
     }
   }, [user, loading, router]);
 

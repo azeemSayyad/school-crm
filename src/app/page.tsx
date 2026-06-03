@@ -6,8 +6,7 @@ import LoginScreen from "@/components/LoginScreen";
 import { useAuth } from "@/lib/auth-context";
 
 function landingFor(role: string): string {
-  if (role === "teacher") return "/crm/appointments";
-  return "/crm/dashboard";
+  return "/crm/students";
 }
 
 export default function RootLanding() {

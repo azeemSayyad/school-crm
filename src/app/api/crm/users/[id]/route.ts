@@ -16,19 +16,21 @@ type RouteCtx = { params: Promise<{ id: string }> };
 /**
  * PATCH /api/crm/users/[id] — update an existing CRM user.
  *
- * Auth: admin / super_admin only. If the body contains a `password`, it is
- * hashed on the server before being persisted. Empty / omitted password means
- * "leave the existing hash alone".
+ * Auth: admin / super_admin or updating own user account.
  */
 export async function PATCH(request: Request, ctx: RouteCtx) {
   const caller = await validateToken(request);
-  if (!caller || !ADMIN_ROLES.has(caller.role)) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+  if (!caller) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: idStr } = await ctx.params;
-  const id = Number(idStr);
-  if (!Number.isFinite(id)) return Response.json({ error: "Invalid id" }, { status: 400 });
+  const { id } = await ctx.params;
+  if (!id) return Response.json({ error: "Invalid id" }, { status: 400 });
+
+  const isSelf = caller.id === id;
+  if (!isSelf && !ADMIN_ROLES.has(caller.role)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const supabase = getSupabase();
   if (!supabase) return Response.json({ error: "Database not configured" }, { status: 503 });
@@ -42,12 +44,22 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     if (!["super_admin", "admin", "teacher"].includes(body.role)) {
       return Response.json({ error: "Invalid role" }, { status: 400 });
     }
+    // Only admins/super_admins can change roles
+    if (!ADMIN_ROLES.has(caller.role)) {
+      return Response.json({ error: "Forbidden to change role" }, { status: 403 });
+    }
     updates.role = body.role;
   }
   if ("email" in body) updates.email = body.email ? String(body.email).trim() : null;
-  if ("can_take_appointments" in body) updates.can_take_appointments = !!body.can_take_appointments;
+  if ("can_take_appointments" in body) {
+    // Only admins/super_admins can change appointments config
+    if (!ADMIN_ROLES.has(caller.role)) {
+      return Response.json({ error: "Forbidden to change appointment configuration" }, { status: 403 });
+    }
+    updates.can_take_appointments = !!body.can_take_appointments;
+  }
 
-  // Only hash + update password if a non-empty value was provided.
+  // Only update password if a non-empty value was provided.
   if (typeof body.password === "string" && body.password.trim()) {
     updates.password = body.password.trim();
   }
@@ -84,12 +96,11 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { id: idStr } = await ctx.params;
-  const id = Number(idStr);
-  if (!Number.isFinite(id)) return Response.json({ error: "Invalid id" }, { status: 400 });
+  const { id } = await ctx.params;
+  if (!id) return Response.json({ error: "Invalid id" }, { status: 400 });
 
   // Don't let an admin delete themselves and lock everyone out.
-  if (id === Number(caller.id)) {
+  if (id === caller.id) {
     return Response.json({ error: "You cannot delete your own account" }, { status: 400 });
   }
 
