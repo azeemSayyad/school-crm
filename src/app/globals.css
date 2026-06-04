@@ -16,11 +16,11 @@
     --sidebar-width: 220px;
     --sidebar-width-collapsed: 64px;
     --sidebar-border: #e8eaed;
-    --sidebar-active-bg: #eef2ff;
-    --sidebar-active-color: #4f46e5;
-    --sidebar-icon-color: #9ca3af;
-    --sidebar-text: #374151;
-    --sidebar-hover-bg: #f5f7ff;
+    --sidebar-active-bg: #eff6ff;
+    --sidebar-active-color: #0170B9;
+    --sidebar-icon-color: #64748b;
+    --sidebar-text: #475569;
+    --sidebar-hover-bg: #f8fafc;
 
     /* Top bar */
     --topbar-bg: #ffffff;
@@ -80,7 +80,6 @@
     width: var(--sidebar-width);
     min-width: var(--sidebar-width);
     background: var(--sidebar-bg);
-    border-right: 1px solid var(--sidebar-border);
     display: flex;
     flex-direction: column;
     transition: width 0.25s cubic-bezier(0.4,0,0.2,1),
@@ -89,7 +88,17 @@
     z-index: 200;
     position: relative;
     flex-shrink: 0;
-    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+  }
+
+  /* Desktop docked style */
+  @media (min-width: 768px) {
+    .crm-sidebar {
+      margin: 0;
+      height: 100vh;
+      border-radius: 0;
+      border-right: 1px solid var(--sidebar-border);
+      box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    }
   }
 
   .crm-sidebar.collapsed {
@@ -97,16 +106,40 @@
     min-width: var(--sidebar-width-collapsed);
   }
 
-  /* Mobile: sidebar is off-canvas by default */
+  /* Centering and sizing in collapsed state */
+  .crm-sidebar.collapsed .sidebar-nav-item {
+    justify-content: center;
+    padding: 10px;
+    width: 40px;
+    height: 40px;
+    margin: 0 auto;
+    border-radius: 12px;
+  }
+
+  .crm-sidebar.collapsed .sidebar-nav {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .crm-sidebar.collapsed .sidebar-footer {
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Mobile: sidebar is off-canvas by default and slides from the right */
   @media (max-width: 767px) {
     .crm-sidebar {
       position: fixed;
-      top: 0;
-      left: 0;
-      height: 100%;
-      transform: translateX(-100%);
+      top: 12px;
+      right: 12px;
+      left: auto;
+      height: calc(100vh - 24px);
+      border-radius: 20px;
+      border: 1px solid var(--sidebar-border);
+      transform: translateX(calc(100% + 24px));
       z-index: 300;
-      box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+      box-shadow: -10px 0 30px rgba(0,0,0,0.08);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .crm-sidebar.mobile-open {
       transform: translateX(0);
@@ -273,6 +306,16 @@
     min-width: 0;
   }
 
+  @media (min-width: 768px) {
+    .crm-main {
+      margin: 0;
+      border-radius: 0;
+      background: var(--c-bg);
+      border: none;
+      box-shadow: none;
+    }
+  }
+
   /* ─── TOP BAR ─── */
   .crm-topbar {
     height: var(--topbar-h);
@@ -436,7 +479,49 @@
     border: 1px solid var(--c-border);
     border-radius: 8px;
     width: 36px;
-    height: 36px;
+  }
+
+  /* ─── GLOBAL PREMIUM TABLE STYLES ─── */
+  .crm-content table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .crm-content thead tr {
+    background-color: #fafafa !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+
+  .crm-content thead th {
+    padding: 14px 16px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    border-right: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+
+  .crm-content thead th:last-child {
+    border-right: none !important;
+  }
+
+  .crm-content tbody tr {
+    border-bottom: 1px solid #f1f5f9 !important;
+    transition: background-color 0.15s ease !important;
+  }
+
+  .crm-content tbody tr:hover {
+    background-color: #f8fafc !important;
+  }
+
+  .crm-content tbody td {
+    padding: 16px 16px !important;
+    font-size: 13.5px !important;
+    color: #334155 !important;
+    vertical-align: middle !important;
   }
 
 }

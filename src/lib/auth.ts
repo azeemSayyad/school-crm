@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-export const SESSION_COOKIE = "gmtti_session";
+export const SESSION_COOKIE = "mvhs_session";
 export const SESSION_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 
 /**

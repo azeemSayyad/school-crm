@@ -156,14 +156,47 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
         className={`crm-sidebar${sidebarCollapsed ? " collapsed" : ""}${mobileSidebarOpen ? " mobile-open" : ""}`}
       >
         {/* Sidebar header / brand */}
-        <div className="sidebar-brand" onClick={() => router.push(brandHref)}>
-          <div className="sidebar-logo">
-            {Icons.school}
+        {!sidebarCollapsed ? (
+          <div className="sidebar-brand flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => router.push(brandHref)}>
+              <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100/50 flex items-center justify-center text-[#0170B9] shrink-0 shadow-sm">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+                </svg>
+              </div>
+              <span className="sidebar-brand-text font-black text-[15px] tracking-wider text-slate-800">MVHS</span>
+            </div>
+            <button
+              onClick={() => setSidebarCollapsed(true)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100/70 border border-slate-200/50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              title="Collapse sidebar"
+            >
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
           </div>
-          {!sidebarCollapsed && (
-            <span className="sidebar-brand-text">GMTTI</span>
-          )}
-        </div>
+        ) : (
+          <div className="sidebar-brand flex items-center justify-center py-4 border-b border-gray-100">
+            <button
+              onClick={() => setSidebarCollapsed(false)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center bg-blue-50 hover:bg-blue-100/70 border border-blue-100/60 text-[#0170B9] transition-all cursor-pointer shadow-sm"
+              title="Expand sidebar"
+            >
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+
+
+        {/* Group Header: Navigation */}
+        {!sidebarCollapsed && (
+          <div className="px-4 text-[9.5px] font-extrabold tracking-wider text-slate-400 uppercase mt-2 mb-1.5">Navigation</div>
+        )}
 
         {/* Nav items */}
         <nav className="sidebar-nav">
@@ -175,87 +208,105 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 prefetch
-                title={sidebarCollapsed ? item.label : undefined}
-                className={`sidebar-nav-item${active ? " active" : ""}`}
+                className={`group relative sidebar-nav-item${active ? " active" : ""}`}
               >
                 <span className="nav-icon">{item.icon}</span>
                 {!sidebarCollapsed && <span className="nav-label">{item.label}</span>}
-                {active && !sidebarCollapsed && <span className="nav-active-bar" />}
+                {sidebarCollapsed && (
+                  <span className="pointer-events-none absolute left-full ml-4 z-50 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white shadow-xl opacity-0 translate-x-[-10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap before:content-[''] before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-[6px] before:border-transparent before:border-r-slate-900">
+                    {item.label}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* Collapse toggle — desktop only */}
-        <button
-          className="sidebar-collapse-btn"
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <svg
-            width="16" height="16" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor" strokeWidth="2"
-            style={{ transform: sidebarCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.25s" }}
+        {/* Group Header: Account */}
+        {!sidebarCollapsed ? (
+          <div className="px-4 text-[9.5px] font-extrabold tracking-wider text-slate-400 uppercase mt-4 mb-1.5">Account</div>
+        ) : (
+          <div className="border-t border-slate-100 my-3 mx-2" />
+        )}
+
+        {/* Sidebar Footer */}
+        <div className="sidebar-footer p-2 flex flex-col gap-0.5">
+          <button
+            onClick={() => {
+              setChangePasswordError("");
+              setChangePasswordSuccess("");
+              setNewPassword("");
+              setConfirmPassword("");
+              setChangePasswordOpen(true);
+            }}
+            className="group relative sidebar-nav-item w-full text-left cursor-pointer"
+            style={{ background: "transparent", border: "none" }}
           >
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          {!sidebarCollapsed && <span style={{ fontSize: 12, fontWeight: 500 }}>Collapse</span>}
-        </button>
+            <span className="nav-icon text-[#0170B9]">{Icons.lock}</span>
+            {!sidebarCollapsed && <span className="nav-label">Change Password</span>}
+            {sidebarCollapsed && (
+              <span className="pointer-events-none absolute left-full ml-4 z-50 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white shadow-xl opacity-0 translate-x-[-10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap before:content-[''] before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-[6px] before:border-transparent before:border-r-slate-900">
+                Change Password
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="group relative sidebar-nav-item w-full text-left cursor-pointer text-rose-600 hover:bg-rose-50/70 hover:text-rose-700"
+            style={{ background: "transparent", border: "none" }}
+          >
+            <span className="nav-icon text-rose-500">{Icons.logout}</span>
+            {!sidebarCollapsed && <span className="nav-label">Sign Out</span>}
+            {sidebarCollapsed && (
+              <span className="pointer-events-none absolute left-full ml-4 z-50 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white shadow-xl opacity-0 translate-x-[-10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap before:content-[''] before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-[6px] before:border-transparent before:border-r-slate-900">
+                Sign Out
+              </span>
+            )}
+          </button>
+        </div>
       </aside>
 
       {/* ─── MAIN AREA ─── */}
       <div className="crm-main">
         {/* Top bar */}
         <header className="crm-topbar">
-          {/* Hamburger (mobile) / collapse toggle feedback */}
-          <button
-            className="topbar-hamburger"
-            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileSidebarOpen ? Icons.x : Icons.menu}
-          </button>
-
-          {/* Page title derived from path */}
-          <div className="topbar-title">
-            {filteredNavItems.find(n => pathname.startsWith(n.href))?.label ?? "CRM"}
+          {/* Mobile-only logo and brand on the left */}
+          <div className="md:hidden flex items-center gap-2 cursor-pointer" onClick={() => router.push(brandHref)}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white bg-[#0170B9] shrink-0 shadow-sm">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+              </svg>
+            </div>
+            <span className="font-black text-[14px] text-slate-800 tracking-wider">MVHS</span>
           </div>
+
+          <div className="flex-1" />
 
           {/* Right actions */}
           <div className="topbar-right">
             <NotificationDropdown onUnreadCountChange={() => {}} userId={userId ? Number(userId) : null} />
 
-            <div className="topbar-divider" />
-
-            <div className="topbar-user">
-              <div className="topbar-avatar">{userInitial}</div>
-              <div className="topbar-user-info">
-                <span className="topbar-user-email">{user?.username ?? "User"}</span>
-                <span className="topbar-user-role">{roleLabel}</span>
+            {/* Desktop-only user info */}
+            <div className="hidden md:flex items-center gap-3">
+              <div className="topbar-divider" />
+              <div className="topbar-user">
+                <div className="topbar-avatar">{userInitial}</div>
+                <div className="topbar-user-info">
+                  <span className="topbar-user-email">{user?.username ?? "User"}</span>
+                  <span className="topbar-user-role">{roleLabel}</span>
+                </div>
               </div>
             </div>
 
-            <div className="topbar-divider" />
-
-            <button 
-              className="topbar-logout-btn" 
-              onClick={() => {
-                setChangePasswordError("");
-                setChangePasswordSuccess("");
-                setNewPassword("");
-                setConfirmPassword("");
-                setChangePasswordOpen(true);
-              }} 
-              title="Change password"
-              style={{ marginRight: "12px" }}
+            {/* Hamburger (mobile) brought to the right-most position */}
+            <button
+              className="topbar-hamburger md:hidden ml-2"
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              aria-label="Toggle menu"
             >
-              {Icons.lock}
-              <span className="topbar-logout-label">Change Password</span>
-            </button>
-
-            <button className="topbar-logout-btn" onClick={handleLogout} title="Sign out">
-              {Icons.logout}
-              <span className="topbar-logout-label">Sign Out</span>
+              {mobileSidebarOpen ? Icons.x : Icons.menu}
             </button>
           </div>
         </header>

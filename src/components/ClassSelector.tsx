@@ -1,20 +1,19 @@
 "use client";
 
-/** All school classes in order, each with a unique colour palette. */
 export const CLASS_LIST = [
-  { value: "Nursery", label: "Nursery", bg: "#fdf4ff", border: "#e879f9", text: "#a21caf", dot: "#d946ef" },
-  { value: "LKG",     label: "LKG",     bg: "#fff7ed", border: "#fb923c", text: "#c2410c", dot: "#f97316" },
-  { value: "UKG",     label: "UKG",     bg: "#fffbeb", border: "#fbbf24", text: "#b45309", dot: "#f59e0b" },
-  { value: "1",       label: "Class I",   bg: "#f0fdf4", border: "#4ade80", text: "#15803d", dot: "#22c55e" },
-  { value: "2",       label: "Class II",  bg: "#ecfdf5", border: "#34d399", text: "#065f46", dot: "#10b981" },
-  { value: "3",       label: "Class III", bg: "#eff6ff", border: "#60a5fa", text: "#1d4ed8", dot: "#3b82f6" },
-  { value: "4",       label: "Class IV",  bg: "#eef2ff", border: "#818cf8", text: "#3730a3", dot: "#6366f1" },
-  { value: "5",       label: "Class V",   bg: "#faf5ff", border: "#c084fc", text: "#7e22ce", dot: "#a855f7" },
-  { value: "6",       label: "Class VI",  bg: "#fdf2f8", border: "#f472b6", text: "#9d174d", dot: "#ec4899" },
-  { value: "7",       label: "Class VII", bg: "#fff1f2", border: "#fb7185", text: "#be123c", dot: "#f43f5e" },
-  { value: "8",       label: "Class VIII",bg: "#fff7ed", border: "#fdba74", text: "#9a3412", dot: "#fb923c" },
-  { value: "9",       label: "Class IX",  bg: "#fefce8", border: "#fde047", text: "#854d0e", dot: "#eab308" },
-  { value: "10",      label: "Class X",   bg: "#f0fdfa", border: "#2dd4bf", text: "#0f766e", dot: "#14b8a6" },
+  { value: "Nursery", label: "Nursery", bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "LKG",     label: "LKG",     bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "UKG",     label: "UKG",     bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "1",       label: "Class I",   bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "2",       label: "Class II",  bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "3",       label: "Class III", bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "4",       label: "Class IV",  bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "5",       label: "Class V",   bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "6",       label: "Class VI",  bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "7",       label: "Class VII", bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "8",       label: "Class VIII",bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "9",       label: "Class IX",  bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
+  { value: "10",      label: "Class X",   bg: "#f8fafc", border: "#e2e8f0", text: "#475569", dot: "#0170B9" },
 ] as const;
 
 export type ClassValue = (typeof CLASS_LIST)[number]["value"];

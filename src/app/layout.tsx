@@ -16,8 +16,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "GMTTI CRM",
-  description: "GMTTI CRM - Enrollment Pipeline Management",
+  title: "MVHS CRM",
+  description: "MVHS CRM - Enrollment Pipeline Management",
   icons: {
     icon: [
       { url: "/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png" },
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "GMTTI",
+    title: "MVHS",
     statusBarStyle: "black-translucent",
   },
 };

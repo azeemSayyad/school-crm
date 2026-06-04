@@ -6,10 +6,36 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Student } from "@/lib/crm-types";
 import { useAuth } from "@/lib/auth-context";
 import { CLASS_LIST, ClassBadge, ClassSelector } from "@/components/ClassSelector";
+import {
+  DndContext,
+  useSensors,
+  useSensor,
+  PointerSensor,
+  DragEndEvent,
+  useDroppable,
+  useDraggable,
+  DragOverlay,
+  DragStartEvent,
+  DragCancelEvent,
+} from "@dnd-kit/core";
 
 /* ── helpers ── */
 const getInitials = (name: string) =>
   name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch (e) {
+    return "";
+  }
+};
 
 const getHue = (name: string) =>
   name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
@@ -174,7 +200,7 @@ function StudentCard({ student, onNavigate }: { student: Student; onNavigate: (i
   return (
     <div
       onClick={() => onNavigate(student.id)}
-      className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden p-5 flex flex-col justify-between"
+      className="group bg-white rounded-2xl border border-gray-100/80 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-250 cursor-pointer overflow-hidden p-5 flex flex-col justify-between"
     >
       <div>
         <div className="flex items-center gap-3 mb-3">
@@ -234,6 +260,221 @@ function StudentCard({ student, onNavigate }: { student: Student; onNavigate: (i
 }
 
 /* ─────────────────────────────────────────
+   KANBAN COMPONENTS
+───────────────────────────────────────── */
+function KanbanStudentCard({
+  student,
+  onNavigate,
+}: {
+  student: Student;
+  onNavigate: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: student.id,
+  });
+
+  const balance = (student.total_fees ?? 0) - (student.fees_paid ?? 0);
+  const isPaid = balance <= 0;
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onClick={() => onNavigate(student.id)}
+      className={`bg-white border border-slate-200/80 rounded-xl p-4 shadow-[0_2px_6px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 cursor-grab active:cursor-grabbing transition-all duration-200 flex flex-col justify-between ${
+        isDragging ? "opacity-30" : ""
+      }`}
+    >
+      <div>
+        {/* Title row */}
+        <div className="flex items-start gap-2 mb-2.5">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="text-slate-400 shrink-0 mt-0.5">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span className="font-extrabold text-[13px] text-slate-800 leading-snug tracking-tight">
+            {student.name}
+          </span>
+        </div>
+
+        {/* Badges / Labels row */}
+        <div className="flex flex-wrap gap-1.5 mb-1">
+          {/* Fee status badge */}
+          <span
+            className={`text-[8.5px] font-extrabold uppercase px-2 py-0.5 rounded border tracking-wider ${
+              isPaid
+                ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                : "bg-rose-50 border-rose-100 text-rose-700"
+            }`}
+          >
+            {isPaid ? "PAID" : `DUE: ₹${balance}`}
+          </span>
+
+          {/* Contact phone badge */}
+          <span className="bg-slate-50 border border-slate-100 text-slate-500 text-[8.5px] font-extrabold px-2 py-0.5 rounded tracking-wider uppercase">
+            {student.phone ? "CONTACTED" : "NO PHONE"}
+          </span>
+        </div>
+      </div>
+
+      {/* Footer bar */}
+      <div className="border-t border-slate-100 mt-2.5 pt-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8.5px] font-black text-blue-600 bg-blue-50 border border-blue-100/50 shrink-0 shadow-sm">
+            {getInitials(student.name)}
+          </div>
+          <span className="text-[11px] text-slate-500 font-bold truncate">
+            {student.name.split(" ")[0]}
+          </span>
+        </div>
+        <span className="text-[10px] text-slate-400 font-extrabold tracking-tight uppercase">
+          {formatDate(student.created_at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function KanbanStudentCardOverlay({ student }: { student: Student }) {
+  const balance = (student.total_fees ?? 0) - (student.fees_paid ?? 0);
+  const isPaid = balance <= 0;
+
+  return (
+    <div
+      className="bg-white border border-blue-250 rounded-xl p-4 shadow-[0_12px_28px_rgba(0,0,0,0.12)] cursor-grabbing flex flex-col justify-between scale-[1.02] rotate-1 select-none pointer-events-none"
+      style={{ width: "260px" }}
+    >
+      <div>
+        {/* Title row */}
+        <div className="flex items-start gap-2 mb-2.5">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="text-blue-550 shrink-0 mt-0.5">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span className="font-extrabold text-[13px] text-slate-800 leading-snug tracking-tight">
+            {student.name}
+          </span>
+        </div>
+
+        {/* Badges / Labels row */}
+        <div className="flex flex-wrap gap-1.5 mb-1">
+          {/* Fee status badge */}
+          <span
+            className={`text-[8.5px] font-extrabold uppercase px-2 py-0.5 rounded border tracking-wider ${
+              isPaid
+                ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                : "bg-rose-50 border-rose-100 text-rose-700"
+            }`}
+          >
+            {isPaid ? "PAID" : `DUE: ₹${balance}`}
+          </span>
+
+          {/* Contact phone badge */}
+          <span className="bg-slate-50 border border-slate-100 text-slate-500 text-[8.5px] font-extrabold px-2 py-0.5 rounded tracking-wider uppercase">
+            {student.phone ? "CONTACTED" : "NO PHONE"}
+          </span>
+        </div>
+      </div>
+
+      {/* Footer bar */}
+      <div className="border-t border-slate-100 mt-2.5 pt-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8.5px] font-black text-blue-600 bg-blue-50 border border-blue-100/50 shrink-0 shadow-sm">
+            {getInitials(student.name)}
+          </div>
+          <span className="text-[11px] text-slate-500 font-bold truncate">
+            {student.name.split(" ")[0]}
+          </span>
+        </div>
+        <span className="text-[10px] text-slate-400 font-extrabold tracking-tight uppercase">
+          {formatDate(student.created_at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function KanbanColumn({
+  id,
+  title,
+  students,
+  onNavigate,
+  onAddStudent,
+}: {
+  id: string;
+  title: string;
+  students: Student[];
+  onNavigate: (id: string) => void;
+  onAddStudent?: () => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col bg-slate-50/70 rounded-2xl p-4 w-[295px] shrink-0 border transition-all ${
+        isOver ? "border-blue-400 bg-blue-50/30 shadow-inner" : "border-slate-200/60"
+      }`}
+    >
+      {/* Column Header */}
+      <div className="flex items-center justify-between mb-4 px-0.5">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Column Icon indicator */}
+          <div className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black text-[#0170B9] bg-blue-50 border border-blue-100/50 shrink-0 shadow-sm">
+            {title.replace("Class ", "").slice(0, 2)}
+          </div>
+          <h3 className="text-[14.5px] font-black text-[#0170B9] tracking-tight capitalize truncate">
+            {title}
+          </h3>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="bg-white border border-slate-200/80 px-2 py-0.5 rounded-full text-[10px] font-extrabold text-slate-500 shadow-sm">
+            {students.length}
+          </span>
+          <button className="text-slate-400 hover:text-slate-650 cursor-pointer p-0.5 rounded hover:bg-slate-100/50 transition-colors">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 12a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Cards List container */}
+      <div className="flex-1 flex flex-col gap-2.5 min-h-[420px] overflow-y-auto max-h-[70vh] pr-0.5 no-scrollbar">
+        {students.map((student) => (
+          <KanbanStudentCard
+            key={student.id}
+            student={student}
+            onNavigate={onNavigate}
+          />
+        ))}
+        {students.length === 0 && (
+          <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-xl py-8 px-4 text-center">
+            <span className="text-[11px] text-slate-400 font-medium">Drag students here</span>
+          </div>
+        )}
+      </div>
+
+      {/* Column Footer Action */}
+      {onAddStudent && (
+        <button
+          onClick={onAddStudent}
+          className="mt-3 w-full py-2 rounded-xl border border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/20 text-[11px] font-bold text-slate-500 hover:text-blue-600 transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.01)] bg-white"
+        >
+          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Student
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
    CLASS CARD (shown on the overview grid)
 ───────────────────────────────────────── */
 function ClassCard({
@@ -248,87 +489,68 @@ function ClassCard({
   onClick: () => void;
 }) {
   return (
-    <button
+    <div
       onClick={onClick}
-      className="group text-left w-full cursor-pointer"
-      style={{ background: "transparent", border: "none", padding: 0 }}
+      className="group bg-white rounded-2xl border border-gray-100/80 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-250 cursor-pointer overflow-hidden p-5 flex flex-col justify-between text-left"
     >
-      <div
-        className="relative w-full rounded-2xl overflow-hidden transition-all duration-200 group-hover:shadow-lg"
-        style={{
-          background: "#ffffff",
-          border: `1.5px solid ${cls.border}50`,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-        }}
-      >
-        {/* Gradient accent bar */}
-        <div
-          className="h-2 w-full"
-          style={{ background: `linear-gradient(90deg, ${cls.dot}, ${cls.border})` }}
-        />
-
-        <div className="px-5 pt-5 pb-4">
-          {/* Class name row */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-[12px] font-black"
-                style={{ background: cls.dot + "18", color: cls.dot }}
-              >
-                {cls.label.replace("Class ", "").slice(0, 3)}
-              </div>
-              <span className="text-[14px] font-bold text-gray-700">{cls.label}</span>
-            </div>
-            <svg
-              width="14" height="14" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-              className="text-gray-300 group-hover:text-gray-500 transition-colors -mr-0.5"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </div>
-
-          {/* Count */}
-          <div className="flex items-baseline gap-2 mb-3">
-            <span
-              className="text-[44px] font-black leading-none tracking-tight"
-              style={{ color: cls.text }}
-            >
-              {count}
-            </span>
-            <span className="text-[13px] font-semibold text-gray-400 pb-1.5">
-              {count === 1 ? "student" : "students"}
-            </span>
-          </div>
-
-          {/* Progress bar showing relative fullness (visual only) */}
-          <div className="h-1 rounded-full bg-gray-100 overflow-hidden mb-3">
+      <div>
+        {/* Class name row */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
             <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                background: `linear-gradient(90deg, ${cls.dot}, ${cls.border})`,
-                width: count === 0 ? "0%" : `${Math.min(100, (count / 20) * 100)}%`,
-                opacity: 0.7,
-              }}
-            />
+              className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-extrabold text-[#0170B9] bg-blue-50 border border-blue-100/50 shrink-0 shadow-sm"
+            >
+              {cls.label.replace("Class ", "").slice(0, 3)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13.5px] font-bold text-gray-900 truncate leading-tight">{cls.label}</p>
+              <p className="text-[12px] text-gray-400 mt-0.5 truncate">Class / Standard</p>
+            </div>
           </div>
-
-          {/* Class teacher footer */}
-          <div
-            className="flex items-center gap-1.5 pt-2 mt-1"
-            style={{ borderTop: "1px solid #f3f4f6" }}
+          <svg
+            width="14" height="14" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+            className="text-gray-300 group-hover:text-gray-500 transition-colors -mr-0.5"
           >
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="shrink-0" style={{ color: cls.dot }}>
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span className="text-[11.5px] font-medium truncate" style={{ color: teacherName ? "#374151" : "#d1d5db" }}>
-              {teacherName ?? "No teacher assigned"}
-            </span>
-          </div>
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </div>
+
+        {/* Count */}
+        <div className="flex items-baseline gap-2 mb-3">
+          <span className="text-[44px] font-black leading-none tracking-tight text-gray-900">
+            {count}
+          </span>
+          <span className="text-[13px] font-semibold text-gray-400 pb-1.5">
+            {count === 1 ? "student" : "students"}
+          </span>
+        </div>
+
+        {/* Progress bar showing relative fullness (visual only) */}
+        <div className="h-1 rounded-full bg-gray-100 overflow-hidden mb-4">
+          <div
+            className="h-full rounded-full transition-all duration-500 bg-[#0170B9]"
+            style={{
+              width: count === 0 ? "0%" : `${Math.min(100, (count / 20) * 100)}%`,
+              opacity: 0.7,
+            }}
+          />
         </div>
       </div>
-    </button>
+
+      {/* Class teacher footer */}
+      <div
+        className="flex items-center gap-1.5 pt-3 border-t border-gray-100"
+      >
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-gray-400 shrink-0">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        <span className="text-[11.5px] font-semibold truncate text-gray-500">
+          {teacherName ?? "No teacher assigned"}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -378,17 +600,63 @@ export default function StudentsPage() {
   const { user } = useAuth();
   const isTeacher = user?.role === "teacher";
 
-  const [classViewMode, setClassViewMode] = useState<"card" | "table">("table");
-  const [studentViewMode, setStudentViewMode] = useState<"card" | "table">("table");
+  const [classViewMode, setClassViewMode] = useState<"card" | "table">("card");
+  const [studentViewMode, setStudentViewMode] = useState<"card" | "table">("card");
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [modalDefaultClass, setModalDefaultClass] = useState<string | undefined>(undefined);
+  const [activeId, setActiveId] = useState<string | null>(null);
   // Map: classValue -> teacher name (for display on cards)
   const [teacherByClass, setTeacherByClass] = useState<Record<string, string>>({});
   // For teacher role: the classes they are assigned to
   const [myClasses, setMyClasses] = useState<string[] | null>(null); // null = not yet resolved
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const studentId = active.id as string;
+    const newClass = over.id === "__unassigned__" ? null : (over.id as string);
+
+    // Find the student
+    const student = students.find((s) => s.id === studentId);
+    if (!student || student.standard === newClass) return;
+
+    // Optimistically update local state
+    setStudents((prev) =>
+      prev.map((s) => (s.id === studentId ? { ...s, standard: newClass } : s))
+    );
+
+    // Update in database
+    const { error } = await supabase
+      .from("students")
+      .update({ standard: newClass })
+      .eq("id", studentId);
+
+    if (error) {
+      fetchStudents();
+    }
+  };
 
   /* fetch ALL students once (for counts + class view) */
   const fetchStudents = useCallback(async () => {
@@ -442,6 +710,13 @@ export default function StudentsPage() {
     CLASS_LIST.map((c) => [c.value, students.filter((s) => s.standard === c.value).length])
   );
   const unassigned = students.filter((s) => !s.standard);
+
+  const columns = isTeacher && myClasses !== null
+    ? CLASS_LIST.filter((c) => myClasses.includes(c.value)).map((c) => ({ id: c.value, label: c.label }))
+    : [
+        ...CLASS_LIST.map((c) => ({ id: c.value, label: c.label })),
+        { id: "__unassigned__", label: "Unassigned" },
+      ];
 
   /* students shown in class view */
   const classStudents = selectedClass
@@ -525,12 +800,7 @@ export default function StudentsPage() {
                               className="border-b border-gray-100 hover:bg-slate-50/50 transition-colors cursor-pointer"
                             >
                               <td className="px-5 py-3">
-                                <div className="flex flex-col justify-center">
-                                  <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{cls.label}</span>
-                                  <div className="mt-1.5">
-                                    <ClassBadge value={cls.value} />
-                                  </div>
-                                </div>
+                                <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{cls.label}</span>
                               </td>
                               <td className="px-5 py-3">
                                 <div className="flex flex-col justify-center">
@@ -539,12 +809,7 @@ export default function StudentsPage() {
                                 </div>
                               </td>
                               <td className="px-5 py-3 text-center">
-                                <div className="flex flex-col items-center justify-center">
-                                  <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{count} Active</span>
-                                  <span className="mt-1.5 bg-emerald-500 text-white text-[10.5px] font-extrabold px-2.5 py-0.5 rounded tracking-wider uppercase inline-block leading-normal">
-                                    ACTIVE
-                                  </span>
-                                </div>
+                                <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{count}</span>
                               </td>
                               <td className="px-5 py-3 text-right">
                                 <span className="inline-flex items-center gap-1.5 text-[14.5px] font-bold text-blue-600">
@@ -561,21 +826,104 @@ export default function StudentsPage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-5">
-                    {visibleClasses.map((cls) => (
-                      <ClassCard
-                        key={cls.value}
-                        cls={cls}
-                        count={countByClass[cls.value] ?? 0}
-                        teacherName={teacherByClass[cls.value] ?? null}
-                        onClick={() => { setSelectedClass(cls.value); setSearch(""); }}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    {/* Mobile/Tablet: vertical list of rectangular class cards */}
+                    <div className="md:hidden flex flex-col gap-4 mb-5">
+                      {visibleClasses.map((cls) => (
+                        <ClassCard
+                          key={cls.value}
+                          cls={cls}
+                          count={countByClass[cls.value] ?? 0}
+                          teacherName={teacherByClass[cls.value] ?? null}
+                          onClick={() => { setSelectedClass(cls.value); setSearch(""); }}
+                        />
+                      ))}
+
+                      {/* Mobile Unassigned Card — only for admin/super_admin */}
+                      {!isTeacher && unassigned.length > 0 && (
+                        <div
+                          className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-gray-100/80 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 cursor-pointer transition-all duration-200"
+                          onClick={() => { setSelectedClass("__unassigned__"); setSearch(""); }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-extrabold text-gray-550 bg-gray-50 border border-gray-150 shrink-0">
+                              U
+                            </div>
+                            <div>
+                              <p className="text-[13.5px] font-bold text-gray-900 leading-tight">Unassigned</p>
+                              <p className="text-[12px] text-gray-400 mt-0.5">No class assigned</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[24px] font-black text-gray-900">{unassigned.length}</span>
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="text-gray-300">
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Desktop: Kanban Board */}
+                    <div className="hidden md:block mb-5">
+                      {/* Inject style tag to hide scrollbars */}
+                      <style dangerouslySetInnerHTML={{__html: `
+                        .no-scrollbar::-webkit-scrollbar {
+                          display: none !important;
+                        }
+                        .no-scrollbar {
+                          -ms-overflow-style: none !important;
+                          scrollbar-width: none !important;
+                        }
+                      `}} />
+
+                      <DndContext
+                        sensors={sensors}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        onDragCancel={handleDragCancel}
+                      >
+                        <div className="flex gap-5 overflow-x-auto pb-6 pt-1 select-none no-scrollbar">
+                          {columns.map((col) => {
+                            const colStudents = students.filter(
+                              (s) =>
+                                (col.id === "__unassigned__" && !s.standard) ||
+                                (s.standard === col.id)
+                            );
+                            return (
+                              <KanbanColumn
+                                key={col.id}
+                                id={col.id}
+                                title={col.label}
+                                students={colStudents}
+                                onNavigate={(id) => router.push(`/crm/students/${id}`)}
+                                onAddStudent={
+                                  col.id === "__unassigned__"
+                                    ? undefined
+                                    : () => {
+                                        setModalDefaultClass(col.id);
+                                        setShowAddModal(true);
+                                      }
+                                }
+                              />
+                            );
+                          })}
+                        </div>
+
+                        <DragOverlay>
+                          {activeId ? (
+                            <KanbanStudentCardOverlay
+                              student={students.find((s) => s.id === activeId)!}
+                            />
+                          ) : null}
+                        </DragOverlay>
+                      </DndContext>
+                    </div>
+                  </>
                 )}
 
-                {/* Unassigned row — only for admin/super_admin */}
-                {!isTeacher && unassigned.length > 0 && (
+                {/* Unassigned row — only for admin/super_admin in table view */}
+                {classViewMode === "table" && !isTeacher && unassigned.length > 0 && (
                   <div
                     className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-all"
                     onClick={() => { setSelectedClass("__unassigned__"); setSearch(""); }}
@@ -770,9 +1118,14 @@ export default function StudentsPage() {
       {/* Add Student Modal */}
       {showAddModal && (
         <AddStudentModal
-          onClose={() => setShowAddModal(false)}
+          onClose={() => {
+            setShowAddModal(false);
+            setModalDefaultClass(undefined);
+          }}
           onCreated={fetchStudents}
-          defaultClass={selectedClass && selectedClass !== "__unassigned__" ? selectedClass : undefined}
+          defaultClass={
+            modalDefaultClass || (selectedClass && selectedClass !== "__unassigned__" ? selectedClass : undefined)
+          }
         />
       )}
     </div>

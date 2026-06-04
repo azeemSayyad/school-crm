@@ -22,7 +22,7 @@ const TEMPLATES: Record<WhatsAppTemplateCategory, Record<WhatsAppTemplateLang, W
       lang: "EN",
       variables: ["name"],
       render: ({ name }) =>
-        `Hi ${name}! Thank you for your interest in GMTTI. Our team will be in touch with you shortly. Reply STOP to opt out.`,
+        `Hi ${name}! Thank you for your interest in MVHS. Our team will be in touch with you shortly. Reply STOP to opt out.`,
     },
     ES: {
       sid: process.env.NEXT_PUBLIC_TWILIO_TEMPLATE_INQUIRY_ES_SID || "",
@@ -31,7 +31,7 @@ const TEMPLATES: Record<WhatsAppTemplateCategory, Record<WhatsAppTemplateLang, W
       lang: "ES",
       variables: ["name"],
       render: ({ name }) =>
-        `¡Hola ${name}! Gracias por su interés en GMTTI. Nuestro equipo se comunicará con usted en breve. Responda STOP para darse de baja.`,
+        `¡Hola ${name}! Gracias por su interés en MVHS. Nuestro equipo se comunicará con usted en breve. Responda STOP para darse de baja.`,
     },
   },
   follow_up: {
@@ -42,7 +42,7 @@ const TEMPLATES: Record<WhatsAppTemplateCategory, Record<WhatsAppTemplateLang, W
       lang: "EN",
       variables: ["name"],
       render: ({ name }) =>
-        `Hi ${name}, just following up on your interest in GMTTI. Would you like to schedule a visit or get more information?`,
+        `Hi ${name}, just following up on your interest in MVHS. Would you like to schedule a visit or get more information?`,
     },
     ES: {
       sid: process.env.NEXT_PUBLIC_TWILIO_TEMPLATE_FOLLOWUP_ES_SID || "",
@@ -51,7 +51,7 @@ const TEMPLATES: Record<WhatsAppTemplateCategory, Record<WhatsAppTemplateLang, W
       lang: "ES",
       variables: ["name"],
       render: ({ name }) =>
-        `Hola ${name}, le hacemos seguimiento sobre su interés en GMTTI. ¿Le gustaría programar una visita o recibir más información?`,
+        `Hola ${name}, le hacemos seguimiento sobre su interés en MVHS. ¿Le gustaría programar una visita o recibir más información?`,
     },
   },
   appointment: {
@@ -62,7 +62,7 @@ const TEMPLATES: Record<WhatsAppTemplateCategory, Record<WhatsAppTemplateLang, W
       lang: "EN",
       variables: ["name"],
       render: ({ name }) =>
-        `Hi ${name}, your appointment at GMTTI has been confirmed. Please arrive 10 minutes early.`,
+        `Hi ${name}, your appointment at MVHS has been confirmed. Please arrive 10 minutes early.`,
     },
     ES: {
       sid: process.env.NEXT_PUBLIC_TWILIO_TEMPLATE_APPT_ES_SID || "",
@@ -71,7 +71,7 @@ const TEMPLATES: Record<WhatsAppTemplateCategory, Record<WhatsAppTemplateLang, W
       lang: "ES",
       variables: ["name"],
       render: ({ name }) =>
-        `Hola ${name}, su cita en GMTTI ha sido confirmada. Por favor llegue 10 minutos antes.`,
+        `Hola ${name}, su cita en MVHS ha sido confirmada. Por favor llegue 10 minutos antes.`,
     },
   },
 };

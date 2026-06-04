@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const SESSION_COOKIE = "gmtti_session";
+const SESSION_COOKIE = "mvhs_session";
 
 /**
  * Edge middleware: gate the /crm/* surface area.

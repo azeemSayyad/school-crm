@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Student } from "@/lib/crm-types";
 import { CLASS_LIST } from "@/components/ClassSelector";
@@ -156,6 +157,7 @@ function PaymentModal({ student, onClose, onSave }: PaymentModalProps) {
 }
 
 export default function FeeTrackingPage() {
+  const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState<string>("all");
@@ -333,7 +335,8 @@ export default function FeeTrackingPage() {
                       return (
                         <tr
                           key={s.id}
-                          className="border-b border-gray-100 hover:bg-slate-50/50 transition-colors"
+                          onClick={() => router.push(`/crm/students/${s.id}`)}
+                          className="border-b border-gray-100 hover:bg-slate-50/50 transition-colors cursor-pointer"
                         >
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3.5">
@@ -369,7 +372,7 @@ export default function FeeTrackingPage() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-5 py-3">
+                          <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-center items-center gap-2">
                               <button
                                 onClick={() => setPaymentTarget(s)}
@@ -456,7 +459,8 @@ export default function FeeTrackingPage() {
                   return (
                     <div
                       key={s.id}
-                      className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4"
+                      onClick={() => router.push(`/crm/students/${s.id}`)}
+                      className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -487,7 +491,7 @@ export default function FeeTrackingPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                         <div>
                           <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Balance Due</span>
                           <span className={`block text-[15.5px] font-black mt-0.5 ${balance > 0 ? "text-rose-600" : "text-emerald-600"}`}>

@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "GMTTI CRM",
-    short_name: "GMTTI",
-    description: "GMTTI CRM - Enrollment Pipeline Management",
+    name: "MVHS CRM",
+    short_name: "MVHS",
+    description: "MVHS CRM - Enrollment Pipeline Management",
     start_url: "/",
     display: "standalone",
     background_color: "#0b0f1a",
