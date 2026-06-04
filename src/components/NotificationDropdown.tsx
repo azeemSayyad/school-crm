@@ -19,13 +19,9 @@ interface Notification {
 const TYPE_META: Record<string, { color: string; bg: string; icon: string }> = {
   new_lead:     { color: "#6366f1", bg: "#eef2ff", icon: "●" },
   stage_change: { color: "#3b82f6", bg: "#eff6ff", icon: "◉" },
-  appointment:  { color: "#059669", bg: "#ecfdf5", icon: "◆" },
-  no_show:      { color: "#ef4444", bg: "#fef2f2", icon: "◇" },
   enrollment:   { color: "#16a34a", bg: "#f0fdf4", icon: "✦" },
   broadcast:    { color: "#f59e0b", bg: "#fffbeb", icon: "◎" },
-  new_email:    { color: "#0170B9", bg: "#e8f4fb", icon: "✉" },
   system:       { color: "#9ca3af", bg: "#f2f3f7", icon: "⚙" },
-  appointment_assigned: { color: "#8b5cf6", bg: "#f5f3ff", icon: "📋" },
 };
 
 function timeAgo(dateStr: string) {

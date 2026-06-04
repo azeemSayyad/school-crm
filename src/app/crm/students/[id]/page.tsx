@@ -1,37 +1,14 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type {
   Student, StudentProgram,
-  Message,
-  RetargetChannel,
 } from "@/lib/crm-types";
-import MessagingModal from "@/components/MessagingModal";
 import { useAuth } from "@/lib/auth-context";
 import { ClassBadge, ClassSelector } from "@/components/ClassSelector";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  type DragStartEvent,
-  type DragEndEvent,
-  type DragCancelEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 /* ─────────────────────────────────────────────────────────
    Light theme palette (this page only — overrides dark vars)
@@ -71,28 +48,6 @@ const fmtDateTime = (d: string | null) =>
 
 const fmtMonthYear = (d: string) =>
   new Date(d).toLocaleString("en-US", { month: "long", year: "numeric" });
-
-/* ─── Constant Maps ─── */
-
-const RETARGET_CHANNELS: { value: RetargetChannel; label: string }[] = [
-  { value: "google_ads", label: "Google Ads" },
-  { value: "meta_ads", label: "Meta Ads" },
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "email", label: "Email" },
-  { value: "phone", label: "Phone" },
-  { value: "sms", label: "SMS" },
-];
-
-const RECENT_FETCH_LIMIT = 50;       // messages cap for chat widget
-const CHAT_PAGE_SIZE = 20;            // Right-sidebar chat pagination size
-
-// Right-column section IDs, in their fallback order when a user has no saved preference.
-const DEFAULT_SECTION_ORDER: string[] = ["conversation"];
-
-/* ─────────────────────────────────────────────────────────
-   Inline Edit Components — declared OUTSIDE the page component
-   so they don't get recreated on each render
-   ───────────────────────────────────────────────────────── */
 
 type FieldType = "text" | "email" | "tel" | "textarea" | "number";
 
@@ -157,7 +112,10 @@ function InlineField({
             autoFocus
             type={type}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setDraft(type === "number" ? val.replace(/^0+(?=\d)/, "") : val);
+            }}
             onBlur={commit}
             onKeyDown={(e) => {
               if (e.key === "Enter") commit();
@@ -293,128 +251,6 @@ function ReadOnlyField({
   );
 }
 
-type DragHandleBag = {
-  attributes: React.HTMLAttributes<HTMLElement>;
-  listeners?: Record<string, (event: unknown) => void>;
-  isDragging?: boolean;
-};
-
-function CollapsibleSection({
-  title,
-  count,
-  defaultOpen = true,
-  action,
-  children,
-  dragHandle,
-  isOverlay = false,
-  forceCollapsed = false,
-}: {
-  title: string;
-  count?: number;
-  defaultOpen?: boolean;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-  /** When provided, renders a drag grip on the left of the header wired to dnd-kit. */
-  dragHandle?: DragHandleBag;
-  /** True when this instance is the floating DragOverlay clone — suppresses its source visibility + hover states. */
-  isOverlay?: boolean;
-  /** Force the section closed regardless of internal open state (used during drag so the preview is a compact header-only card). */
-  forceCollapsed?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  const effectiveOpen = open && !forceCollapsed && !isOverlay;
-  return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{
-        background: T.surface,
-        border: `1px solid ${T.border}`,
-        boxShadow: isOverlay
-          ? "0 12px 32px -8px rgba(15, 23, 42, 0.18), 0 4px 12px -4px rgba(15, 23, 42, 0.12)"
-          : undefined,
-      }}
-    >
-      <div
-        className="flex items-center justify-between px-2 py-3 select-none"
-        style={{ cursor: isOverlay ? "grabbing" : "pointer" }}
-        onClick={() => { if (!isOverlay) setOpen((v) => !v); }}
-      >
-        <div className="flex items-center gap-1 min-w-0">
-          {dragHandle && (
-            <div
-              {...dragHandle.attributes}
-              {...(dragHandle.listeners ?? {})}
-              onClick={(e) => e.stopPropagation()}
-              className="shrink-0 w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-black/[0.05]"
-              style={{ color: T.textFaint, cursor: isOverlay ? "grabbing" : "grab", touchAction: "none" }}
-              title="Drag to reorder"
-              aria-label="Drag to reorder"
-            >
-              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
-                <circle cx="2" cy="2" r="1.2" />
-                <circle cx="8" cy="2" r="1.2" />
-                <circle cx="2" cy="7" r="1.2" />
-                <circle cx="8" cy="7" r="1.2" />
-                <circle cx="2" cy="12" r="1.2" />
-                <circle cx="8" cy="12" r="1.2" />
-              </svg>
-            </div>
-          )}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: T.textMuted, transform: effectiveOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-          <span className="text-[13px] font-semibold truncate" style={{ color: T.text }}>{title}</span>
-          {count != null && (
-            <span className="text-[11px] font-semibold px-1.5 py-px rounded" style={{ background: T.surfaceAlt, color: T.textSecondary }}>
-              {count}
-            </span>
-          )}
-        </div>
-        {action && <div className="pr-2" onClick={(e) => e.stopPropagation()}>{action}</div>}
-      </div>
-      {effectiveOpen && <div className="px-4 pb-4" style={{ borderTop: `1px solid ${T.borderLight}` }}>{children}</div>}
-    </div>
-  );
-}
-
-/**
- * Wraps any child (a CollapsibleSection) with dnd-kit's useSortable, producing
- * smooth FLIP animations when sibling items reorder. The child decides where
- * to put the drag handle via the `dragHandle` prop threaded by the caller.
- */
-function SortableSection({
-  id,
-  children,
-}: {
-  id: string;
-  children: (bag: { dragHandle: DragHandleBag; isDragging: boolean }) => React.ReactNode;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    // While this item is being dragged, hide the original in place — the
-    // DragOverlay clone follows the cursor instead.
-    opacity: isDragging ? 0 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      {children({
-        dragHandle: { attributes, listeners: listeners as DragHandleBag["listeners"], isDragging },
-        isDragging,
-      })}
-    </div>
-  );
-}
 
 /* ─────────────────────────────────────────────────────────
    Attendance Demo Component (static demo data)
@@ -623,7 +459,7 @@ function ProgressCardDemo({ studentName, standard }: { studentName: string; stan
               type="number"
               value={maxMarks}
               min={1}
-              onChange={(e) => setMaxMarks(e.target.value)}
+              onChange={(e) => setMaxMarks(e.target.value.replace(/^0+(?=\d)/, ""))}
               className="w-20 text-[13px] px-2 py-1.5 rounded outline-none text-center"
               style={{ background: T.surfaceAlt, color: T.text, border: `1px solid ${T.border}`, fontFamily: "inherit" }}
             />
@@ -644,7 +480,7 @@ function ProgressCardDemo({ studentName, standard }: { studentName: string; stan
                     min={0}
                     max={max}
                     value={marks[sub]}
-                    onChange={(e) => setMarks((m) => ({ ...m, [sub]: e.target.value }))}
+                    onChange={(e) => setMarks((m) => ({ ...m, [sub]: e.target.value.replace(/^0+(?=\d)/, "") }))}
                     placeholder={`/ ${max}`}
                     className="w-20 text-[13px] px-2 py-1.5 rounded outline-none text-center"
                     style={{ background: T.surfaceAlt, color: T.text, border: `1px solid ${T.border}`, fontFamily: "inherit" }}
@@ -798,25 +634,15 @@ export default function StudentDetailPage() {
 
   /* ─── Data ─── */
   const [student, setStudent] = useState<Student | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [programs, setPrograms] = useState<StudentProgram[]>([]);
   const [teachers, setTeachers] = useState<{ id: number; username: string }[]>([]);
 
-  /* ─── Right-sidebar chat widget ─── */
-  const [chatMessages, setChatMessages] = useState<Message[]>([]);
-  const [chatTotal, setChatTotal] = useState(0);
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatInput, setChatInput] = useState("");
-  const [chatChannel, setChatChannel] = useState<"whatsapp" | "sms">("whatsapp");
-  const [chatSending, setChatSending] = useState(false);
-  const chatScrollRef = useRef<HTMLDivElement>(null);
-
   /* ─── UI ─── */
   const [loading, setLoading] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
   const [centerTab, setCenterTab] = useState<"Attendance" | "Progress Card">("Attendance");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   /* ─── Toast ─── */
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" } | null>(null);
@@ -830,52 +656,6 @@ export default function StudentDetailPage() {
 
   useEffect(() => () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }, []);
 
-  /* ─── Right-column section order (per-user, persisted in crm_users.ui_preferences) ─── */
-  const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_SECTION_ORDER);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-
-  // Pointer activation is delayed by an 8px drag so a plain click on the grip
-  // (or anywhere on the header) still expands/collapses without triggering a
-  // drag. Keyboard sensor enables arrow-key reordering for a11y.
-  const sectionDndSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/crm/users/ui-preferences", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        const saved = data?.preferences?.contact_detail_section_order;
-        if (Array.isArray(saved) && saved.length > 0) {
-          // Keep only known ids, then append any new ids the user hasn't seen yet.
-          const filtered = saved.filter((id: unknown): id is string => typeof id === "string" && DEFAULT_SECTION_ORDER.includes(id));
-          const missing = DEFAULT_SECTION_ORDER.filter((id) => !filtered.includes(id));
-          setSectionOrder([...filtered, ...missing]);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
-  const persistSectionOrder = useCallback((order: string[]) => {
-    fetch("/api/crm/users/ui-preferences", {
-      method: "PATCH",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: "contact_detail_section_order", value: order }),
-    }).catch(() => {
-      showToast("Couldn't save section order", "error");
-    });
-  }, [showToast]);
-
-  /* ─── Quick-send messaging modal (SMS / WhatsApp) ─── */
-  const [showMessagingModal, setShowMessagingModal] = useState(false);
-  const [messagingChannel, setMessagingChannel] = useState<"sms" | "whatsapp">("sms");
-
-
   /* ─── Data Fetching ─── */
 
   const fetchData = useCallback(async () => {
@@ -886,22 +666,20 @@ export default function StudentDetailPage() {
 
     setLoading(true);
 
-    const [studentRes, msgRes, programRes] =
+    const [studentRes, programRes] =
       await Promise.all([
         supabase.from("students").select("*").eq("id", id).single(),
-        supabase.from("messages").select("*").eq("student_id", id).order("created_at", { ascending: false }).limit(RECENT_FETCH_LIMIT),
         supabase.from("student_programs").select("*").eq("student_id", id).order("created_at", { ascending: false }),
       ]);
 
     if (studentRes.data) setStudent(studentRes.data as Student);
-    if (msgRes.data) setMessages(msgRes.data as Message[]);
     if (programRes.data) setPrograms(programRes.data as StudentProgram[]);
 
-    // Assignable users (for bulk assign)
+    // Assignable teachers/users
     const { data: usersData } = await supabase
       .from("crm_users")
       .select("id, username")
-      .or("role.eq.teacher,can_take_appointments.eq.true")
+      .eq("role", "teacher")
       .order("username");
     if (usersData) setTeachers(usersData);
 
@@ -931,27 +709,6 @@ export default function StudentDetailPage() {
     }
   }, [student, showToast]);
 
-  /* ─── Other handlers (preserved) ─── */
-
-  const handleRetarget = async (channel: RetargetChannel) => {
-    if (!student) return;
-    const { data } = await supabase
-      .from("students")
-      .update({
-        retarget_count: student.retarget_count + 1,
-        last_retarget_date: new Date().toISOString(),
-        retarget_channel: channel,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", student.id)
-      .select()
-      .single();
-    if (data) {
-      setStudent(data as Student);
-      showToast(`Marked for ${channel.replace("_", " ")} retarget`);
-    }
-  };
-
   const handleDeleteStudent = async () => {
     if (!student || !isSupabaseConfigured()) return;
     if (!canDeleteStudent) return;
@@ -960,7 +717,6 @@ export default function StudentDetailPage() {
     setDeleting(false);
     router.push("/crm/students");
   };
-
 
   const addProgram = useCallback(async (programName: string) => {
     if (!isSupabaseConfigured() || !student || !programName) return;
@@ -1000,92 +756,6 @@ export default function StudentDetailPage() {
     showToast("Program removed");
   }, [showToast]);
 
-  /* ─── Chat widget: paginated message fetch ─── */
-  // Loads the oldest-to-newest slice of `count` messages so the chat renders chronologically (top = oldest loaded).
-  const fetchChatPage = useCallback(async (count: number) => {
-    if (!isSupabaseConfigured() || !id) return;
-    setChatLoading(true);
-    const { data, count: total } = await supabase
-      .from("messages")
-      .select("*", { count: "exact" })
-      .eq("student_id", id)
-      .order("created_at", { ascending: false })
-      .range(0, count - 1);
-    if (data) {
-      // Reverse so chat renders oldest-at-top, newest-at-bottom
-      setChatMessages(([...data] as Message[]).reverse());
-    }
-    if (typeof total === "number") setChatTotal(total);
-    setChatLoading(false);
-  }, [id]);
-
-  // Initial load of the last 20 messages
-  useEffect(() => {
-    if (id) fetchChatPage(CHAT_PAGE_SIZE);
-  }, [id, fetchChatPage]);
-
-  // Auto-scroll to bottom on initial load so the newest message is in view.
-  // Two passes (sync + rAF) because bubble heights can shift after fonts finish
-  // laying out, which would otherwise leave scroll stuck mid-list.
-  const didInitialChatScrollRef = useRef(false);
-  useLayoutEffect(() => {
-    if (!didInitialChatScrollRef.current && chatMessages.length > 0 && chatScrollRef.current) {
-      const scroll = () => {
-        if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-      };
-      scroll();
-      requestAnimationFrame(scroll);
-      didInitialChatScrollRef.current = true;
-    }
-  }, [chatMessages.length]);
-
-  const handleChatScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    // When user scrolls to top AND more messages exist, load 20 more older ones
-    if (el.scrollTop === 0 && !chatLoading && chatMessages.length < chatTotal) {
-      const prevHeight = el.scrollHeight;
-      fetchChatPage(chatMessages.length + CHAT_PAGE_SIZE).then(() => {
-        // Preserve scroll position so the user's current view doesn't jump
-        requestAnimationFrame(() => {
-          if (chatScrollRef.current) {
-            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight - prevHeight;
-          }
-        });
-      });
-    }
-  }, [chatLoading, chatMessages.length, chatTotal, fetchChatPage]);
-
-  const chatProgramName = programs[0]?.program_name || null;
-
-  const handleChatSend = useCallback(async () => {
-    const trimmed = chatInput.trim();
-    if (!trimmed || !student || chatSending) return;
-
-    setChatSending(true);
-    const endpoint = chatChannel === "sms" ? "/api/sms/send" : "/api/whatsapp/send";
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ student_id: student.id, message: trimmed, user_id: user?.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        showToast(data.error || "Failed to send", "error");
-        setChatSending(false);
-        return;
-      }
-      setChatInput("");
-      await fetchChatPage(Math.max(chatMessages.length + 1, CHAT_PAGE_SIZE));
-      requestAnimationFrame(() => {
-        if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-      });
-    } catch {
-      showToast("Failed to send", "error");
-    }
-    setChatSending(false);
-  }, [chatInput, chatChannel, student, chatSending, chatMessages.length, fetchChatPage, showToast, user?.id]);
-
   /* ─── Loading / Not Found ─── */
 
   if (loading) {
@@ -1116,10 +786,6 @@ export default function StudentDetailPage() {
 
   const hue = getHue(student.name);
   const initials = getInitials(student.name);
-
-  /* ─────────────────────────────────────────────────────────
-     RENDER
-     ───────────────────────────────────────────────────────── */
 
   return (
     <div
@@ -1152,7 +818,7 @@ export default function StudentDetailPage() {
         )}
       </div>
 
-      {/* ─── 3-Column Layout (each column scrolls independently on lg+) ─── */}
+      {/* ─── 2-Column Layout ─── */}
       <div className="flex flex-col lg:flex-row lg:flex-1 lg:min-h-0">
         {/* ─── LEFT SIDEBAR ─── */}
         <aside
@@ -1183,44 +849,72 @@ export default function StudentDetailPage() {
             </div>
 
             {/* Quick action buttons */}
-            <div className="flex gap-2 mb-4 pb-4" style={{ borderBottom: `1px solid ${T.borderLight}` }}>
+            <div className="mb-4 pb-4" style={{ borderBottom: `1px solid ${T.borderLight}` }}>
               <a
                 href={`tel:${student.phone}`}
-                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-semibold text-[13px] transition-opacity hover:opacity-90 no-underline"
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg font-semibold text-[13px] transition-opacity hover:opacity-90 no-underline"
                 style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", color: "#2563eb", border: "1px solid rgba(59,130,246,0.2)" }}
               >
                 <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
                 </svg>
-                Call
+                Call Student
               </a>
-              <button
-                onClick={() => { setMessagingChannel("sms"); setShowMessagingModal(true); }}
-                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg cursor-pointer border-none font-semibold text-[13px] transition-opacity hover:opacity-90"
-                style={{ background: "linear-gradient(135deg, #f3edff 0%, #e6d9ff 100%)", color: "#7c3aed", border: "1px solid rgba(124,58,237,0.2)" }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                </svg>
-                Chat
-              </button>
             </div>
 
-            {/* About this student */}
-            <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.08em]" style={{ color: T.textMuted }}>
-              About this student
+            {/* Phone & arrow - visible only on mobile/tablet (<lg) */}
+            <div className="flex items-center gap-2 mb-4 lg:hidden">
+              <button
+                type="button"
+                onClick={() => setDetailsExpanded(!detailsExpanded)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer border-none hover:bg-black/[0.05] transition-colors shrink-0"
+                style={{ background: "transparent", color: T.textMuted }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    transform: detailsExpanded ? "rotate(90deg)" : "none",
+                    transition: "transform 0.15s",
+                  }}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+              <div 
+                className="flex-1 min-w-0 cursor-pointer"
+                onClick={() => setDetailsExpanded(!detailsExpanded)}
+              >
+                <span className="text-[14px] font-bold" style={{ color: T.textSecondary }}>
+                  {student.phone}
+                </span>
+              </div>
             </div>
-            <div>
-              <InlineField label="Name" value={student.name} onSave={(v) => saveField("name", v)} />
-              <InlineField label="Phone" value={student.phone} onSave={(v) => saveField("phone", v)} type="tel" />
-              <InlineField label="Email" value={student.email} onSave={(v) => saveField("email", v || null)} type="email" />
-              <InlineField label="Address" value={student.address} onSave={(v) => saveField("address", v || null)} type="textarea" />
-              <InlineClassField value={student.standard} onSave={(v) => saveField("standard", v)} />
-              <InlineField label="Total Fees" value={student.total_fees !== null ? String(student.total_fees) : "0"} onSave={(v) => saveField("total_fees", parseFloat(v) || 0)} type="number" />
-              <InlineField label="Fees Paid" value={student.fees_paid !== null ? String(student.fees_paid) : "0"} onSave={(v) => saveField("fees_paid", parseFloat(v) || 0)} type="number" />
-              <ReadOnlyField label="Balance" value={String((student.total_fees ?? 0) - (student.fees_paid ?? 0))} />
-              <InlineField label="Notes" value={student.notes} onSave={(v) => saveField("notes", v || null)} type="textarea" />
-              <ReadOnlyField label="Joined" value={fmtDate(student.created_at)} />
+
+            {/* Collapsible section for extra fields */}
+            <div className={`${detailsExpanded ? "block" : "hidden"} lg:block`}>
+              {/* About this student */}
+              <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.08em]" style={{ color: T.textMuted }}>
+                About this student
+              </div>
+              <div>
+                <InlineField label="Name" value={student.name} onSave={(v) => saveField("name", v)} />
+                <InlineField label="Phone" value={student.phone} onSave={(v) => saveField("phone", v)} type="tel" />
+                <InlineField label="Email" value={student.email} onSave={(v) => saveField("email", v || null)} type="email" />
+                <InlineField label="Address" value={student.address} onSave={(v) => saveField("address", v || null)} type="textarea" />
+                <InlineClassField value={student.standard} onSave={(v) => saveField("standard", v)} />
+                <InlineField label="Total Fees" value={student.total_fees !== null ? String(student.total_fees) : "0"} onSave={(v) => saveField("total_fees", parseFloat(v) || 0)} type="number" />
+                <InlineField label="Fees Paid" value={student.fees_paid !== null ? String(student.fees_paid) : "0"} onSave={(v) => saveField("fees_paid", parseFloat(v) || 0)} type="number" />
+                <ReadOnlyField label="Balance" value={String((student.total_fees ?? 0) - (student.fees_paid ?? 0))} />
+                <InlineField label="Notes" value={student.notes} onSave={(v) => saveField("notes", v || null)} type="textarea" />
+                <ReadOnlyField label="Joined" value={fmtDate(student.created_at)} />
+              </div>
             </div>
 
           </div>
@@ -1255,248 +949,6 @@ export default function StudentDetailPage() {
             {centerTab === "Progress Card" && <ProgressCardDemo studentName={student.name} standard={student.standard} />}
           </div>
         </main>
-
-        {/* ─── RIGHT SIDEBAR ─── */}
-        <aside
-          className={`lg:shrink-0 lg:border-l lg:overflow-y-auto transition-all ${rightOpen ? "lg:w-[400px] xl:w-[440px]" : "lg:w-[44px]"}`}
-          style={{ background: rightOpen ? T.surfaceAlt : T.surface, borderColor: T.border }}
-        >
-          <div>
-            {/* Collapse toggle */}
-            <div className="hidden lg:flex items-center justify-between p-3" style={{ borderBottom: rightOpen ? `1px solid ${T.border}` : "none" }}>
-              {rightOpen && <span className="text-[11px] font-extrabold uppercase tracking-[0.08em]" style={{ color: T.textMuted }}>Details</span>}
-              <button
-                onClick={() => setRightOpen((v) => !v)}
-                className="w-7 h-7 rounded flex items-center justify-center cursor-pointer border-none transition-colors hover:bg-black/[0.05]"
-                style={{ background: "transparent", color: T.textMuted }}
-                aria-label={rightOpen ? "Collapse panel" : "Expand panel"}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  {rightOpen ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
-                </svg>
-              </button>
-            </div>
-
-            {rightOpen && (() => {
-              type SectionBag = { dragHandle?: DragHandleBag; isOverlay?: boolean };
-              const sectionRenderers: Record<string, (bag: SectionBag) => React.ReactNode> = {
-                conversation: ({ dragHandle, isOverlay }) => (
-                <CollapsibleSection
-                  title="Conversation"
-                  count={chatTotal || undefined}
-                  defaultOpen
-                  dragHandle={dragHandle}
-                  isOverlay={isOverlay}
-                  action={
-                    <button
-                      onClick={() => { setMessagingChannel(chatChannel); setShowMessagingModal(true); }}
-                      title="Open full conversation"
-                      className="w-7 h-7 rounded flex items-center justify-center cursor-pointer border-none transition-colors hover:bg-black/[0.05]"
-                      style={{ background: "transparent", color: T.textMuted }}
-                      aria-label="Maximize conversation"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="15 3 21 3 21 9" />
-                        <polyline points="9 21 3 21 3 15" />
-                        <line x1="21" y1="3" x2="14" y2="10" />
-                        <line x1="3" y1="21" x2="10" y2="14" />
-                      </svg>
-                    </button>
-                  }
-                >
-                  <div className="pt-3">
-                    {/* Student action row (moved from left sidebar) */}
-                    <div className="flex items-center justify-center gap-2 pb-3 mb-3" style={{ borderBottom: `1px solid ${T.borderLight}` }}>
-                      <button
-                        onClick={() => setChatChannel("whatsapp")}
-                        title="Use WhatsApp"
-                        className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer border-none transition-transform hover:scale-105 active:scale-95"
-                        style={{
-                          background: "linear-gradient(135deg, #e8faf0 0%, #d1f4e0 100%)",
-                          color: "#1faa54",
-                          boxShadow: chatChannel === "whatsapp"
-                            ? "0 0 0 2px #25d366, inset 0 0 0 1px rgba(37,211,102,0.15)"
-                            : "0 1px 2px rgba(37,211,102,0.1), inset 0 0 0 1px rgba(37,211,102,0.15)",
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setChatChannel("sms")}
-                        title="Use SMS"
-                        className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer border-none transition-transform hover:scale-105 active:scale-95"
-                        style={{
-                          background: "linear-gradient(135deg, #f3edff 0%, #e6d9ff 100%)",
-                          color: "#7c3aed",
-                          boxShadow: chatChannel === "sms"
-                            ? "0 0 0 2px #7c3aed, inset 0 0 0 1px rgba(124,58,237,0.15)"
-                            : "0 1px 2px rgba(124,58,237,0.1), inset 0 0 0 1px rgba(124,58,237,0.15)",
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Messages list */}
-                    <div
-                      ref={chatScrollRef}
-                      onScroll={handleChatScroll}
-                      className="overflow-y-auto rounded-lg px-2 py-2"
-                      style={{ height: 360, background: T.surfaceAlt, border: `1px solid ${T.borderLight}` }}
-                    >
-                      {chatLoading && chatMessages.length === 0 ? (
-                        <div className="flex items-center justify-center h-full">
-                          <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke={T.textMuted} strokeWidth="3" opacity="0.3" />
-                            <path d="M12 2a10 10 0 019.75 7.75" stroke={T.textMuted} strokeWidth="3" strokeLinecap="round" />
-                          </svg>
-                        </div>
-                      ) : chatMessages.length === 0 ? (
-                        <div className="flex items-center justify-center h-full text-[12.5px]" style={{ color: T.textMuted }}>
-                          No messages yet.
-                        </div>
-                      ) : (
-                        <>
-                          {chatLoading && (
-                            <div className="flex items-center justify-center py-2">
-                              <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="10" stroke={T.textMuted} strokeWidth="3" opacity="0.3" />
-                                <path d="M12 2a10 10 0 019.75 7.75" stroke={T.textMuted} strokeWidth="3" strokeLinecap="round" />
-                              </svg>
-                            </div>
-                          )}
-                          {chatMessages.length < chatTotal && !chatLoading && (
-                            <div className="text-center text-[10.5px] pb-2" style={{ color: T.textFaint }}>
-                              Scroll up to load older
-                            </div>
-                          )}
-                          <div className="flex flex-col gap-1.5">
-                            {chatMessages.map((m) => {
-                              const outbound = m.direction === "outbound";
-                              const channelColor = m.channel === "whatsapp" ? "#25d366" : m.channel === "sms" ? "#7c3aed" : T.accent;
-                              return (
-                                <div key={m.id} className={`flex ${outbound ? "justify-end" : "justify-start"}`}>
-                                  <div
-                                    className="min-w-[80px] max-w-[85%] rounded-lg px-2.5 py-1.5"
-                                    style={{
-                                      background: outbound ? channelColor : T.surface,
-                                      color: outbound ? "#fff" : T.text,
-                                      border: outbound ? "none" : `1px solid ${T.borderLight}`,
-                                    }}
-                                  >
-                                    <div className="text-[12.5px] whitespace-pre-wrap break-words">{m.body}</div>
-                                    <div className="text-[10px] mt-0.5 text-right" style={{ color: outbound ? "rgba(255,255,255,0.75)" : T.textMuted }}>
-                                      {new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Inline send */}
-                    <div className="mt-2 flex items-end gap-1.5">
-                      <textarea
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleChatSend();
-                          }
-                        }}
-                        placeholder={`Message via ${chatChannel === "whatsapp" ? "WhatsApp" : "SMS"}...`}
-                        rows={1}
-                        className="flex-1 text-[12.5px] px-2 py-1.5 rounded outline-none resize-none"
-                        style={{ background: T.surface, color: T.text, border: `1px solid ${T.border}`, fontFamily: "inherit", maxHeight: 88 }}
-                      />
-                      <button
-                        onClick={handleChatSend}
-                        disabled={!chatInput.trim() || chatSending}
-                        className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-none text-white disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-                        style={{ background: chatChannel === "whatsapp" ? "#25d366" : "#7c3aed" }}
-                        title="Send"
-                      >
-                        {chatSending ? (
-                          <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                            <path d="M12 2a10 10 0 019.75 7.75" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                          </svg>
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13" />
-                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </CollapsibleSection>
-                ),
-              };
-
-              return (
-                <DndContext
-                  sensors={sectionDndSensors}
-                  collisionDetection={closestCenter}
-                  onDragStart={(event: DragStartEvent) => {
-                    setActiveDragId(String(event.active.id));
-                  }}
-                  onDragEnd={(event: DragEndEvent) => {
-                    setActiveDragId(null);
-                    const { active, over } = event;
-                    if (!over || active.id === over.id) return;
-                    setSectionOrder((prev) => {
-                      const oldIdx = prev.indexOf(String(active.id));
-                      const newIdx = prev.indexOf(String(over.id));
-                      if (oldIdx === -1 || newIdx === -1) return prev;
-                      const next = arrayMove(prev, oldIdx, newIdx);
-                      persistSectionOrder(next);
-                      return next;
-                    });
-                  }}
-                  onDragCancel={(_event: DragCancelEvent) => setActiveDragId(null)}
-                >
-                  <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
-                    <div className="p-4 space-y-3">
-                      {sectionOrder.map((id) => {
-                        const render = sectionRenderers[id];
-                        if (!render) return null;
-                        return (
-                          <SortableSection key={id} id={id}>
-                            {({ dragHandle }) => render({ dragHandle })}
-                          </SortableSection>
-                        );
-                      })}
-                    </div>
-                  </SortableContext>
-                  <DragOverlay
-                    dropAnimation={{
-                      duration: 220,
-                      easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
-                    }}
-                  >
-                    {activeDragId && sectionRenderers[activeDragId] ? (
-                      <div style={{ cursor: "grabbing" }}>
-                        {sectionRenderers[activeDragId]({
-                          dragHandle: { attributes: {}, listeners: {} },
-                          isOverlay: true,
-                        })}
-                      </div>
-                    ) : null}
-                  </DragOverlay>
-                </DndContext>
-              );
-            })()}
-          </div>
-        </aside>
       </div>
 
       {/* ─── Toast (bottom-left) ─── */}
@@ -1533,7 +985,7 @@ export default function StudentDetailPage() {
               </div>
             </div>
             <p className="text-[13px] mb-5" style={{ color: T.textSecondary }}>
-              Are you sure you want to delete <strong style={{ color: T.text }}>{student.name}</strong>? All messages and activities for this student will be permanently removed.
+              Are you sure you want to delete <strong style={{ color: T.text }}>{student.name}</strong>? All records for this student will be permanently removed.
             </p>
             <div className="flex gap-3">
               <button onClick={handleDeleteStudent} disabled={deleting} className="flex-1 py-2.5 rounded-lg text-[13px] font-bold cursor-pointer border-none transition-colors text-white disabled:opacity-50 flex items-center justify-center gap-2" style={{ background: T.danger }}>
@@ -1547,21 +999,6 @@ export default function StudentDetailPage() {
           </div>
         </>
       )}
-
-      {showMessagingModal && student && (
-        <MessagingModal
-          student={{
-            id: student.id,
-            name: student.name,
-            phone: student.phone,
-            email: student.email,
-            language: student.language,
-          }}
-          initialChannel={messagingChannel}
-          onClose={() => setShowMessagingModal(false)}
-        />
-      )}
-
 
       <style jsx>{`
         @keyframes slideUp {

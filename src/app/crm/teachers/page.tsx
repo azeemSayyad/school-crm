@@ -242,7 +242,7 @@ function AddTeacherModal({ onClose, onCreated }: AddTeacherModalProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[12px] font-medium text-gray-600 mb-1">Base Salary ($)</label>
-              <input type="number" min="0" value={form.base_salary} onChange={(e) => set("base_salary", e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-[#0170B9]/20 focus:border-[#0170B9]" />
+              <input type="number" min="0" value={form.base_salary} onChange={(e) => set("base_salary", e.target.value.replace(/^0+(?=\d)/, ""))} placeholder="0.00" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-[#0170B9]/20 focus:border-[#0170B9]" />
             </div>
             <div>
               <label className="block text-[12px] font-medium text-gray-600 mb-1">Frequency</label>
@@ -649,7 +649,10 @@ function TeacherDrawer({ teacher, onClose, onUpdated, onDeleted }: DrawerProps) 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>Base Salary ($)</label>
-                      <input type="number" min="0" value={form.base_salary ?? ""} onChange={(e) => setForm((f) => ({ ...f, base_salary: e.target.value ? parseFloat(e.target.value) : null }))} className={inputCls} />
+                      <input type="number" min="0" value={form.base_salary !== null && form.base_salary !== undefined ? String(form.base_salary) : ""} onChange={(e) => {
+                        const cleanVal = e.target.value.replace(/^0+(?=\d)/, "");
+                        setForm((f) => ({ ...f, base_salary: cleanVal ? parseFloat(cleanVal) : null }));
+                      }} className={inputCls} />
                     </div>
                     <div>
                       <label className={labelCls}>Frequency</label>
@@ -713,7 +716,7 @@ function TeacherDrawer({ teacher, onClose, onUpdated, onDeleted }: DrawerProps) 
                     </div>
                     <div>
                       <label className={labelCls}>Amount ($)</label>
-                      <input type="number" min="0" value={paymentForm.amount} onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))} placeholder="0.00" className={inputCls} />
+                      <input type="number" min="0" value={paymentForm.amount} onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value.replace(/^0+(?=\d)/, "") }))} placeholder="0.00" className={inputCls} />
                     </div>
                     <div>
                       <label className={labelCls}>Method</label>
@@ -1074,61 +1077,63 @@ export default function TeachersPage() {
         {/* Desktop Table */}
         {!loading && teachers.length > 0 && (
           <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Teacher</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Department / Subject</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Contact</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Base Salary</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Joined</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teachers.map((teacher) => {
-                  const hue = getHue(teacher.name);
-                  const statusMeta = TEACHER_STATUS_META[teacher.status];
-                  const empType = EMPLOYMENT_TYPES.find((e) => e.value === teacher.employment_type)?.label ?? teacher.employment_type;
-                  return (
-                    <tr
-                      key={teacher.id}
-                      onClick={() => setSelectedTeacher(teacher)}
-                      className="border-b border-gray-100 last:border-0 hover:bg-slate-50/50 cursor-pointer transition-colors"
-                    >
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3.5">
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold shrink-0 shadow-sm" style={{ background: `hsl(${hue},65%,50%)` }}>
-                            {getInitials(teacher.name)}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse min-w-[1000px]">
+                <thead>
+                  <tr className="bg-gray-50/50 border-b border-gray-100">
+                    <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Teacher</th>
+                    <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Department / Subject</th>
+                    <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Contact</th>
+                    <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                    <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Base Salary</th>
+                    <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-3 text-left text-[13px] font-bold text-gray-500 uppercase tracking-wider">Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teachers.map((teacher) => {
+                    const hue = getHue(teacher.name);
+                    const statusMeta = TEACHER_STATUS_META[teacher.status];
+                    const empType = EMPLOYMENT_TYPES.find((e) => e.value === teacher.employment_type)?.label ?? teacher.employment_type;
+                    return (
+                      <tr
+                        key={teacher.id}
+                        onClick={() => setSelectedTeacher(teacher)}
+                        className="border-b border-gray-100 last:border-0 hover:bg-slate-50/50 cursor-pointer transition-colors"
+                      >
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold shrink-0 shadow-sm" style={{ background: `hsl(${hue},65%,50%)` }}>
+                              {getInitials(teacher.name)}
+                            </div>
+                            <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{teacher.name}</span>
                           </div>
-                          <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{teacher.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        <p className="text-[15px] font-bold text-gray-900 leading-tight">{teacher.department || "—"}</p>
-                        {teacher.subject && <p className="text-[13px] text-gray-400 font-medium mt-1">{teacher.subject}</p>}
-                      </td>
-                      <td className="px-5 py-3">
-                        <p className="text-[15px] font-bold text-gray-900 leading-tight">{teacher.phone || "—"}</p>
-                        {teacher.email && <p className="text-[13px] text-gray-400 font-medium mt-1">{teacher.email}</p>}
-                      </td>
-                      <td className="px-5 py-3 text-[14.5px] font-medium text-gray-500">{empType}</td>
-                      <td className="px-5 py-3">
-                        <p className="text-[15.5px] font-bold text-gray-900 leading-tight">{fmtCurrency(teacher.base_salary)}</p>
-                        {teacher.base_salary && <p className="text-[12.5px] text-gray-400 capitalize font-medium mt-0.5">{teacher.salary_frequency}</p>}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className="inline-flex px-2.5 py-0.5 rounded-full text-[12px] font-semibold" style={{ color: statusMeta.color, background: statusMeta.bg }}>
-                          {statusMeta.label}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-[14.5px] font-medium text-gray-500 whitespace-nowrap">{fmtDate(teacher.join_date)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="px-5 py-3">
+                          <p className="text-[15px] font-bold text-gray-900 leading-tight">{teacher.department || "—"}</p>
+                          {teacher.subject && <p className="text-[13px] text-gray-400 font-medium mt-1">{teacher.subject}</p>}
+                        </td>
+                        <td className="px-5 py-3">
+                          <p className="text-[15px] font-bold text-gray-900 leading-tight">{teacher.phone || "—"}</p>
+                          {teacher.email && <p className="text-[13px] text-gray-400 font-medium mt-1">{teacher.email}</p>}
+                        </td>
+                        <td className="px-5 py-3 text-[14.5px] font-medium text-gray-500">{empType}</td>
+                        <td className="px-5 py-3">
+                          <p className="text-[15.5px] font-bold text-gray-900 leading-tight">{fmtCurrency(teacher.base_salary)}</p>
+                          {teacher.base_salary && <p className="text-[12.5px] text-gray-400 capitalize font-medium mt-0.5">{teacher.salary_frequency}</p>}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="inline-flex px-2.5 py-0.5 rounded-full text-[12px] font-semibold" style={{ color: statusMeta.color, background: statusMeta.bg }}>
+                            {statusMeta.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-[14.5px] font-medium text-gray-500 whitespace-nowrap">{fmtDate(teacher.join_date)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

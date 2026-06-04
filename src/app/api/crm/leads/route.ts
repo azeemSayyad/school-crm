@@ -12,12 +12,6 @@ function getSupabase() {
 }
 
 const SOURCE_TO_DATA_SOURCE: Record<string, string> = {
-  google_ads: "google_ads",
-  google: "google_ads",
-  meta_ads: "meta_ads",
-  meta: "meta_ads",
-  facebook: "meta_ads",
-  instagram: "meta_ads",
   whatsapp: "whatsapp",
   walk_in: "walk_in",
   walkin: "walk_in",
@@ -85,7 +79,7 @@ export async function POST(request: NextRequest) {
 
   await supabase.from("activity_log").insert({
     student_id: student.id,
-    channel: data_source === "google_ads" || data_source === "meta_ads" ? data_source : "other",
+    channel: "other",
     message_type: "lead_created",
     notes: `Lead created from ${source}`,
   });

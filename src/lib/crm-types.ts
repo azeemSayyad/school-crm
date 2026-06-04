@@ -80,12 +80,11 @@ export const SALARY_PAYMENT_METHODS: { value: SalaryPaymentMethod; label: string
 
 /* ─── CRM Student Management Types ─── */
 
-export type DataSource = 'hubspot_import' | 'crm_native' | 'google_ads' | 'meta_ads' | 'whatsapp' | 'walk_in';
-export type RetargetChannel = 'google_ads' | 'meta_ads' | 'whatsapp' | 'email' | 'phone' | 'sms';
+export type DataSource = 'hubspot_import' | 'crm_native' | 'whatsapp' | 'walk_in';
+export type RetargetChannel = 'whatsapp' | 'phone' | 'sms';
 export type PipelineStatus =
   | 'New'
   | 'Attempted to student'
-  | 'Appointment'
   | 'Hot'
   | 'Warm'
   | 'Cold'
@@ -98,7 +97,7 @@ export type PipelineStatus =
   | 'Opted out'
   | 'Dead';
 export type ReferralType = 'alumni' | 'current_student' | 'partner_org' | 'staff' | 'other' | 'none';
-export type ActivityChannel = 'google_ads' | 'meta_ads' | 'whatsapp' | 'email' | 'phone' | 'sms' | 'in_person' | 'other';
+export type ActivityChannel = 'whatsapp' | 'phone' | 'sms' | 'in_person' | 'other';
 export type DocumentType = 'application' | 'transcript' | 'ID' | 'enrollment_agreement' | 'financial_aid' | 'other';
 export type DocumentStatus = 'pending' | 'received' | 'approved' | 'rejected' | 'N/A';
 export type PaymentStatus = 'current' | 'overdue' | 'paid_in_full' | 'N/A';
@@ -163,19 +162,6 @@ export interface Student {
   // Preferred class shift
   shift: 'AM' | 'PM' | null;
 
-  // Email broadcast opt-out
-  email_opt_out?: boolean;
-  unsubscribe_token?: string | null;
-
-  // SendGrid sync + suppression signals
-  sendgrid_student_id?: string | null;
-  email_bounced?: boolean;
-  email_bounce_reason?: string | null;
-  email_bounce_at?: string | null;
-  email_spam_reported?: boolean;
-  email_last_delivered_at?: string | null;
-  email_last_opened_at?: string | null;
-  email_last_clicked_at?: string | null;
   total_fees: number | null;
   fees_paid: number | null;
 }
@@ -241,7 +227,7 @@ export interface PaymentHistoryEntry {
 /* ─── Messages ─── */
 
 export type MessageDirection = 'inbound' | 'outbound';
-export type MessageChannel = 'whatsapp' | 'sms' | 'email';
+export type MessageChannel = 'whatsapp' | 'sms';
 export type MessageStatus = 'queued' | 'sent' | 'delivered' | 'read' | 'failed' | 'undelivered';
 
 export interface Message {
@@ -253,18 +239,16 @@ export interface Message {
   body: string;
   template_name: string | null;
   status: MessageStatus;
-  twilio_sid: string | null;
   from_number: string | null;
   to_number: string | null;
 }
 
 /* ─── Lead Classification ─── */
 
-export type LeadClassification = 'ready_to_sign_up' | 'ready_to_book' | 'interested_follow_up' | 'not_interested';
+export type LeadClassification = 'ready_to_sign_up' | 'interested_follow_up' | 'not_interested';
 
 export const LEAD_CLASSIFICATIONS: { value: LeadClassification; label: string; color: string; bg: string }[] = [
   { value: 'ready_to_sign_up', label: 'Ready to Sign Up', color: '#10b981', bg: '#ecfdf5' },
-  { value: 'ready_to_book', label: 'Ready to Book Appt', color: '#3b82f6', bg: '#eff6ff' },
   { value: 'interested_follow_up', label: 'Interested — Follow Up', color: '#f59e0b', bg: '#fffbeb' },
   { value: 'not_interested', label: 'Not Interested', color: '#ef4444', bg: '#fef2f2' },
 ];
@@ -279,15 +263,12 @@ export const LEAD_CLASSIFICATIONS: { value: LeadClassification; label: string; c
 export const DATA_SOURCES: { value: DataSource; label: string; color: string; bg: string }[] = [
   { value: 'hubspot_import', label: 'Old Business', color: '#64748b', bg: '#f1f5f9' },
   { value: 'crm_native',     label: 'CRM Native',   color: '#6366f1', bg: '#eef2ff' },
-  { value: 'google_ads',     label: 'Google Ads',   color: '#EA4335', bg: '#fde8e6' },
-  { value: 'meta_ads',       label: 'Meta Ads',     color: '#1877F2', bg: '#e7f0fd' },
   { value: 'whatsapp',       label: 'WhatsApp',     color: '#25D366', bg: '#e6f8ed' },
 ];
 
 export const PIPELINE_STATUSES: { value: PipelineStatus; label: string; color: string; bg: string }[] = [
   { value: 'New',                  label: 'New',                  color: '#0170B9', bg: '#e8f4fb' },
   { value: 'Attempted to student', label: 'Attempted to student', color: '#3b82f6', bg: '#eff6ff' },
-  { value: 'Appointment',          label: 'Appointment',          color: '#8b5cf6', bg: '#f5f3ff' },
   { value: 'Hot',                  label: 'Hot',                  color: '#ef4444', bg: '#fef2f2' },
   { value: 'Warm',                 label: 'Warm',                 color: '#f97316', bg: '#fff7ed' },
   { value: 'Cold',                 label: 'Cold',                 color: '#64748b', bg: '#f1f5f9' },
@@ -305,7 +286,6 @@ export const PIPELINE_STATUSES: { value: PipelineStatus; label: string; color: s
 export const ACTIVE_LEAD_STATUSES: PipelineStatus[] = [
   'New',
   'Attempted to student',
-  'Appointment',
   'Hot',
   'Warm',
   'Cold',
@@ -317,12 +297,9 @@ export const ACTIVE_LEAD_STATUSES: PipelineStatus[] = [
 
 export const ACTIVITY_CHANNELS: { value: ActivityChannel; label: string }[] = [
   { value: 'phone', label: 'Phone' },
-  { value: 'email', label: 'Email' },
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'sms', label: 'SMS' },
   { value: 'in_person', label: 'In Person' },
-  { value: 'google_ads', label: 'Google Ads' },
-  { value: 'meta_ads', label: 'Meta Ads' },
   { value: 'other', label: 'Other' },
 ];
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { getInitials, getHue } from "@/lib/utils";
-import { STAGE_META, type Stage } from "@/lib/types";
 
 /* ─── Badge ─── */
 export function Badge({
@@ -24,17 +23,6 @@ export function Badge({
     >
       {children}
     </span>
-  );
-}
-
-/* ─── Stage Badge ─── */
-export function StageBadge({ stage }: { stage: Stage }) {
-  const m = STAGE_META[stage];
-  return (
-    <Badge color={m.color} bg={m.bg}>
-      <span className="mr-1 text-[7px] align-middle">{m.icon}</span>
-      {stage}
-    </Badge>
   );
 }
 

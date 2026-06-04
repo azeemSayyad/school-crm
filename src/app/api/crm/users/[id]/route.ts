@@ -51,13 +51,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     updates.role = body.role;
   }
   if ("email" in body) updates.email = body.email ? String(body.email).trim() : null;
-  if ("can_take_appointments" in body) {
-    // Only admins/super_admins can change appointments config
-    if (!ADMIN_ROLES.has(caller.role)) {
-      return Response.json({ error: "Forbidden to change appointment configuration" }, { status: 403 });
-    }
-    updates.can_take_appointments = !!body.can_take_appointments;
-  }
+
 
   // Only update password if a non-empty value was provided.
   if (typeof body.password === "string" && body.password.trim()) {
@@ -72,7 +66,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     .from("users")
     .update(updates)
     .eq("id", id)
-    .select("id, username, role, email, can_take_appointments, created_at")
+    .select("id, username, role, email, created_at")
     .single();
 
   if (error) {

@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MVHS CRM",
+    name: "MVHS",
     short_name: "MVHS",
-    description: "MVHS CRM - Enrollment Pipeline Management",
+    description: "MVHS - Enrollment Pipeline Management",
     start_url: "/",
     display: "standalone",
     background_color: "#0b0f1a",

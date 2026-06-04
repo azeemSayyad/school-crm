@@ -9,11 +9,10 @@ import LoginScreen from "@/components/LoginScreen";
 import { useAuth } from "@/lib/auth-context";
 
 const allNavItems = [
-  { href: "/crm/users", label: "Users", icon: Icons.users, superAdminOnly: true },
   { href: "/crm/students", label: "Students", icon: Icons.users },
   { href: "/crm/fees", label: "Fee Tracking", icon: Icons.fees, hideForTeacher: true },
   { href: "/crm/teachers", label: "Teachers", icon: Icons.teacher, adminOnly: true },
-  { href: "/crm/inbox", label: "Inbox", icon: Icons.inbox },
+  { href: "/crm/users", label: "Users", icon: Icons.users, superAdminOnly: true },
 ];
 
 export default function CrmLayout({ children }: { children: React.ReactNode }) {
@@ -112,9 +111,9 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/crm/users") && !isSuperAdmin) {
       router.push("/crm/students");
     } else if (pathname.startsWith("/crm/teachers") && isTeacher) {
-      router.push("/crm/inbox");
+      router.push("/crm/students");
     } else if (pathname.startsWith("/crm/fees") && isTeacher) {
-      router.push("/crm/inbox");
+      router.push("/crm/students");
     }
   }, [authLoading, loggedIn, pathname, isSuperAdmin, isTeacher, router]);
 
@@ -130,7 +129,7 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
   }
   if (!loggedIn) return <LoginScreen onLogin={() => {}} />;
 
-  const brandHref = isTeacher ? "/crm/inbox" : "/crm/students";
+  const brandHref = "/crm/students";
 
   const filteredNavItems = allNavItems.filter(item => {
     if ("superAdminOnly" in item && item.superAdminOnly && !isSuperAdmin) return false;

@@ -162,12 +162,12 @@ function AddStudentModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Total Fees</label>
-              <input type="number" min={0} value={form.total_fees} onChange={(e) => s("total_fees", e.target.value)} placeholder="0"
+              <input type="number" min={0} value={form.total_fees} onChange={(e) => s("total_fees", e.target.value.replace(/^0+(?=\d)/, ""))} placeholder="0"
                 className="w-full px-3 py-2 border border-gray-200 rounded-[8px] text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Fees Paid</label>
-              <input type="number" min={0} value={form.fees_paid} onChange={(e) => s("fees_paid", e.target.value)} placeholder="0"
+              <input type="number" min={0} value={form.fees_paid} onChange={(e) => s("fees_paid", e.target.value.replace(/^0+(?=\d)/, ""))} placeholder="0"
                 className="w-full px-3 py-2 border border-gray-200 rounded-[8px] text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
             </div>
           </div>
@@ -779,51 +779,68 @@ export default function StudentsPage() {
             {!loading && (
               <>
                 {classViewMode === "table" ? (
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50/50 border-b border-gray-100">
-                          <th className="text-left px-5 py-3 text-[13px] font-bold text-gray-500 uppercase tracking-wider"># Class</th>
-                          <th className="text-left px-5 py-3 text-[13px] font-bold text-gray-500 uppercase tracking-wider">Assigned Teacher</th>
-                          <th className="text-center px-5 py-3 text-[13px] font-bold text-gray-500 uppercase tracking-wider">Students</th>
-                          <th className="text-right px-5 py-3 text-[13px] font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {visibleClasses.map((cls) => {
-                          const count = countByClass[cls.value] ?? 0;
-                          const teacherName = teacherByClass[cls.value] ?? null;
-                          return (
-                            <tr
-                              key={cls.value}
-                              onClick={() => { setSelectedClass(cls.value); setSearch(""); }}
-                              className="border-b border-gray-100 hover:bg-slate-50/50 transition-colors cursor-pointer"
-                            >
-                              <td className="px-5 py-3">
-                                <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{cls.label}</span>
-                              </td>
-                              <td className="px-5 py-3">
-                                <div className="flex flex-col justify-center">
-                                  <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{teacherName ?? "No teacher assigned"}</span>
-                                  <span className="text-[13.5px] text-gray-400 font-medium mt-1">Class Teacher</span>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3 text-center">
-                                <span className="text-[15.5px] font-bold text-gray-900 leading-tight">{count}</span>
-                              </td>
-                              <td className="px-5 py-3 text-right">
-                                <span className="inline-flex items-center gap-1.5 text-[14.5px] font-bold text-blue-600">
-                                  View Students
-                                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                    <polyline points="9 18 15 12 9 6" />
-                                  </svg>
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-5">
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse min-w-[450px]">
+                        <thead>
+                          <tr className="bg-slate-50/70 border-b border-slate-100">
+                            <th className="text-left px-5 py-3.5 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider"># Class</th>
+                            <th className="text-left px-5 py-3.5 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Assigned Teacher</th>
+                            <th className="text-center px-5 py-3.5 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Students</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleClasses.map((cls) => {
+                            const count = countByClass[cls.value] ?? 0;
+                            const teacherName = teacherByClass[cls.value] ?? null;
+                            return (
+                              <tr
+                                key={cls.value}
+                                onClick={() => { setSelectedClass(cls.value); setSearch(""); }}
+                                className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40 transition-colors cursor-pointer"
+                              >
+                                <td className="px-5 py-3.5">
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[13px] font-bold bg-blue-50 text-blue-600 border border-blue-100/50">
+                                    {cls.label}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  {teacherName ? (
+                                    <div className="flex items-center gap-2.5">
+                                      <div
+                                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm"
+                                        style={{ background: `hsl(${getHue(teacherName)}, 65%, 55%)` }}
+                                      >
+                                        {getInitials(teacherName)}
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-[14.5px] font-bold text-slate-800 leading-tight">{teacherName}</span>
+                                        <span className="text-[11.5px] text-slate-400 font-semibold mt-0.5">Class Teacher</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 text-[11px] font-bold shrink-0 bg-slate-50 border border-dashed border-slate-200">
+                                        —
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-[14.5px] font-medium text-slate-400 leading-tight italic">No teacher assigned</span>
+                                        <span className="text-[11.5px] text-slate-400 font-semibold mt-0.5">Class Teacher</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-5 py-3.5 text-center">
+                                  <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[13px] font-extrabold bg-slate-100 text-slate-700 min-w-8">
+                                    {count}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -1022,7 +1039,7 @@ export default function StudentsPage() {
               studentViewMode === "table" ? (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
                   <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
+                    <table className="w-full border-collapse min-w-[800px]">
                       <thead>
                         <tr className="bg-gray-50/50 border-b border-gray-100">
                           <th className="text-left px-5 py-3 text-[13px] font-bold text-gray-500 uppercase tracking-wider">Student</th>

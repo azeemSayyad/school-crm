@@ -68,7 +68,7 @@ export async function handleReturningLead(
 
   await supabase.from("activity_log").insert({
     student_id: studentId,
-    channel: source === "meta_ads" ? "meta_ads" : source === "google_ads" ? "google_ads" : "other",
+    channel: "other",
     message_type: "duplicate_touch",
     notes: `Returning lead — updated campaign data`,
   });

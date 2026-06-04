@@ -40,8 +40,8 @@ interface PaymentModalProps {
 }
 
 function PaymentModal({ student, onClose, onSave }: PaymentModalProps) {
-  const [totalFees, setTotalFees] = useState(student.total_fees || 0);
-  const [feesPaid, setFeesPaid] = useState(student.fees_paid || 0);
+  const [totalFees, setTotalFees] = useState(String(student.total_fees || 0));
+  const [feesPaid, setFeesPaid] = useState(String(student.fees_paid || 0));
   const [saving, setSaving] = useState(false);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -51,8 +51,8 @@ function PaymentModal({ student, onClose, onSave }: PaymentModalProps) {
       const { error } = await supabase
         .from("students")
         .update({
-          total_fees: Number(totalFees),
-          fees_paid: Number(feesPaid),
+          total_fees: Number(totalFees) || 0,
+          fees_paid: Number(feesPaid) || 0,
         })
         .eq("id", student.id);
       if (error) throw error;
@@ -85,7 +85,7 @@ function PaymentModal({ student, onClose, onSave }: PaymentModalProps) {
             <input
               type="number"
               value={totalFees}
-              onChange={(e) => setTotalFees(Math.max(0, parseInt(e.target.value) || 0))}
+              onChange={(e) => setTotalFees(e.target.value.replace(/^0+(?=\d)/, ""))}
               className="w-full h-11 px-3 text-[14px] font-bold border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#0170B9] transition-colors"
             />
           </div>
@@ -95,19 +95,30 @@ function PaymentModal({ student, onClose, onSave }: PaymentModalProps) {
             <input
               type="number"
               value={feesPaid}
-              onChange={(e) => setFeesPaid(Math.min(totalFees, Math.max(0, parseInt(e.target.value) || 0)))}
+              onChange={(e) => {
+                const val = e.target.value.replace(/^0+(?=\d)/, "");
+                const numVal = parseInt(val) || 0;
+                const maxVal = parseInt(totalFees) || 0;
+                if (numVal > maxVal) {
+                  setFeesPaid(totalFees);
+                } else {
+                  setFeesPaid(val);
+                }
+              }}
               className="w-full h-11 px-3 text-[14px] font-bold border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#0170B9] transition-colors"
             />
             <div className="flex flex-wrap gap-2 mt-2">
               {[500, 1000, 2000, 5000].map((amt) => {
-                const projected = feesPaid + amt;
-                const disabled = projected > totalFees;
+                const currentPaidNum = parseInt(feesPaid) || 0;
+                const totalFeesNum = parseInt(totalFees) || 0;
+                const projected = currentPaidNum + amt;
+                const disabled = projected > totalFeesNum;
                 return (
                   <button
                     key={amt}
                     type="button"
                     disabled={disabled}
-                    onClick={() => setFeesPaid(Math.min(totalFees, feesPaid + amt))}
+                    onClick={() => setFeesPaid(String(Math.min(totalFeesNum, currentPaidNum + amt)))}
                     className={`text-[12px] font-bold px-2.5 py-1 rounded-lg border transition-all ${disabled
                       ? "opacity-40 cursor-not-allowed border-gray-100 text-gray-300"
                       : "border-gray-200 text-gray-600 hover:border-[#0170B9] hover:text-[#0170B9] hover:bg-blue-50/20"
@@ -129,8 +140,8 @@ function PaymentModal({ student, onClose, onSave }: PaymentModalProps) {
 
           <div className="p-3 bg-gray-50 rounded-xl flex items-center justify-between text-[13.5px] font-medium text-gray-600 mt-2">
             <span>Remaining Balance:</span>
-            <span className={`text-[14.5px] font-black ${totalFees - feesPaid > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-              ₹{totalFees - feesPaid}
+            <span className={`text-[14.5px] font-black ${(parseInt(totalFees) || 0) - (parseInt(feesPaid) || 0) > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+              ₹{(parseInt(totalFees) || 0) - (parseInt(feesPaid) || 0)}
             </span>
           </div>
 
@@ -213,8 +224,8 @@ export default function FeeTrackingPage() {
   const endIndex = Math.min(startIndex + PAGE_SIZE, totalItems);
   const paginatedStudents = filtered.slice(startIndex, endIndex);
 
-  const totalExpected = students.reduce((acc, curr) => acc + (curr.total_fees || 0), 0);
-  const totalPaid = students.reduce((acc, curr) => acc + (curr.fees_paid || 0), 0);
+  const totalExpected = filtered.reduce((acc, curr) => acc + (curr.total_fees || 0), 0);
+  const totalPaid = filtered.reduce((acc, curr) => acc + (curr.fees_paid || 0), 0);
   const totalOutstanding = totalExpected - totalPaid;
   const ratio = totalExpected > 0 ? (totalPaid / totalExpected) * 100 : 0;
 
@@ -319,7 +330,7 @@ export default function FeeTrackingPage() {
           <>
             <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden ">
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+                <table className="w-full border-collapse min-w-[800px]">
                   <thead>
                     <tr className="bg-gray-50/50 border-b border-gray-100">
                       <th className="text-left px-5 py-3 text-[13px] font-bold text-gray-500 uppercase tracking-wider">Student</th>
